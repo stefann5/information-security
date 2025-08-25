@@ -71,7 +71,7 @@ export class Login implements OnInit, OnDestroy {
       ]],
       password: ['', [
         Validators.required,
-        Validators.minLength(8)
+        Validators.minLength(2)
       ]]
     });
   }
@@ -99,6 +99,23 @@ export class Login implements OnInit, OnDestroy {
     };
 
     this.authService.login(credentials)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.isLoading = false;
+        },
+        error: (error) => {
+          this.handleLoginError(error);
+          this.isLoading = false;
+        },
+        complete: () => {
+          this.isLoading = false;
+        }
+      });
+  }
+
+  test(){
+    this.authService.test()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {

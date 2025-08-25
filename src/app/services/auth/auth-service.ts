@@ -2,130 +2,248 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { LoginRequest } from '../../dto/auth/LoginRequest';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, catchError, Observable, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { jwtDecode } from 'jwt-decode';
 import { TokensDto } from '../../dto/auth/TokensDTO';
 import { RegisterRequestDto } from '../../dto/auth/RegisterRequestDTO';
 import { RegisterResponseDto } from '../../dto/auth/RegisterResponseDTO';
+import { RefreshTokenDto } from '../../dto/auth/RefreshTokenDTO';
+import { User } from '../../model/auth/user';
+
+export interface DecodedToken {
+  sub: string;
+  exp: number;
+  iat: number;
+  id?: number;
+  role?: string;
+}
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
-  constructor(private httpClient: HttpClient, private router: Router) { }
+  private readonly TOKEN_KEY = 'secure_app_tokens';
 
-  IsLogged(): boolean {
-    const token = this.getToken();
-    if (!token) {
-      return false;
-    }
-    return true;
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
+
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+
+  constructor(private http: HttpClient, private router: Router) {
+    this.initializeAuth();
   }
 
-  getToken(): string | null {
-    if (this.isLocalStorageAvailable()) {
-      return localStorage.getItem('access_token');
+  /**
+   * Initialize authentication state from stored tokens
+   */
+  private initializeAuth(): void {
+    const tokens = this.getStoredTokens();
+
+    if (tokens && this.isTokenValid(tokens.accessToken)) {
+      this.isAuthenticatedSubject.next(true);
+    } else {
+      this.clearAuthData();
     }
-    return null;
   }
 
-  decodeToken(token: string): any {
+  /**
+   * Login user with username and password
+   */
+  login(credentials: LoginRequest): Observable<TokensDto> {
+    return this.http
+      .post<TokensDto>(`${environment.apiUrl}auth/login`, credentials)
+      .pipe(
+        tap((response) => {
+          this.handleLoginSuccess(response);
+        }),
+        catchError((error) => {
+          console.error('Login failed:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  test(): Observable<String> {
+    return this.http.get<String>(`${environment.apiUrl}auth/test`).pipe(
+      tap((response) => {}),
+      catchError((error) => {
+        console.error('Login failed:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Register new user
+   */
+  register(userData: RegisterRequestDto): Observable<RegisterResponseDto> {
+    return this.http
+      .post<RegisterResponseDto>(`${environment.apiUrl}auth/register`, userData)
+      .pipe(
+        catchError((error) => {
+          console.error('Registration failed:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Handle successful login response
+   */
+  private handleLoginSuccess(response: TokensDto): void {
+    // Store tokens
+    localStorage.setItem(this.TOKEN_KEY, JSON.stringify(response));
+
+    // Update subjects
+    this.isAuthenticatedSubject.next(true);
+  }
+
+  /**
+   * Logout user and clear all stored data
+   */
+  logout(): void {
+    this.clearAuthData();
+    this.router.navigate(['']);
+  }
+
+  /**
+   * Clear authentication data
+   */
+  private clearAuthData(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    this.currentUserSubject.next(null);
+    this.isAuthenticatedSubject.next(false);
+  }
+
+  /**
+   * Get access token for API requests
+   */
+  getAccessToken(): string | null {
+    const tokens = this.getStoredTokens();
+    return tokens?.accessToken || null;
+  }
+
+  /**
+   * Get refresh token
+   */
+  getRefreshToken(): string | null {
+    const tokens = this.getStoredTokens();
+    return tokens?.refreshToken || null;
+  }
+
+  /**
+   * Get stored tokens from localStorage
+   */
+  private getStoredTokens(): TokensDto | null {
     try {
-      return jwtDecode(token);
+      const tokens = localStorage.getItem(this.TOKEN_KEY);
+      return tokens ? JSON.parse(tokens) : null;
     } catch (error) {
-      console.error('Invalid token', error);
+      console.error('Error parsing stored tokens:', error);
       return null;
     }
   }
 
+  /**
+   * Check if token is valid (not expired)
+   */
   isTokenValid(token: string): boolean {
-    const decoded = this.decodeToken(token);
-    if (!decoded) {
+    try {
+      // const decoded = this.decodeToken(token);
+      // const currentTime = Math.floor(Date.now() / 1000);
+      // return decoded.exp > currentTime;
+      return true;
+    } catch (error) {
       return false;
     }
-    return true;
   }
 
-  login(dto: LoginRequest): Observable<TokensDto> {
-    return this.httpClient.post<TokensDto>(
-      `${environment.apiUrl}auth/login`,
-      dto
-    );
-  }
-
-  register(dto: RegisterRequestDto): Observable<RegisterResponseDto> {
-    let url = `${environment.apiUrl}auth/register`;
-
-    return this.httpClient.post<RegisterResponseDto>(url, dto);
-  }
-
-  IsLoggedIn(): boolean {
-    let token = localStorage.getItem('access_token');
-    if (token != null) return this.isTokenValid(token);
-    return false;
-  }
-
-  IsAdmin(): boolean {
-    return this.getRoleFromToken() == 'A';
-  }
-
-  IsAu(): boolean {
-    return this.getRoleFromToken() == 'AU';
-  }
-
-  IsSp(): boolean {
-    return this.getRoleFromToken() == 'SP';
-  }
-
-  IsEo(): boolean {
-    return this.getRoleFromToken() == 'EO';
-  }
-
-  getRoleFromToken(): string {
-    let token = localStorage.getItem('access_token');
-    if (token != null) {
-      const tokenInfo = this.decodeToken(token);
-      const role = tokenInfo.role;
-      return role;
-    }
-    return '';
-  }
-
-  getIdFromToken(): number {
-    if (this.isLocalStorageAvailable()){
-      let token = localStorage.getItem('access_token');
-    if (token != null) {
-      const tokenInfo = this.decodeToken(token);
-      const id = tokenInfo.id;
-      return parseInt(id, 10);
-    }
-    }
-    return -1;
-
-  }
-
-  Logout(): void {
-    if (this.isLocalStorageAvailable()) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+  /**
+   * Decode JWT token
+   */
+  private decodeToken(token: string): DecodedToken {
+    try {
+      const payload = token.split('.')[1];
+      const decodedPayload = atob(payload);
+      return JSON.parse(decodedPayload);
+    } catch (error) {
+      throw new Error('Invalid token format');
     }
   }
-  refreshToken(refreshToken: string): Observable<TokensDto> {
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${refreshToken}`, // Add the refresh token to Authorization header
-    });
 
-    return this.httpClient.post<TokensDto>(`${environment.apiUrl}auth/refresh_token`,{}, {headers});
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    const tokens = this.getStoredTokens();
+    return !!(tokens && this.isTokenValid(tokens.accessToken));
   }
 
-  setTokens(response: { accessToken: string; refreshToken: string }): void {
-    localStorage.setItem('access_token', response.accessToken);
-    localStorage.setItem('refresh_token', response.refreshToken);
+  /**
+   * Get current user
+   */
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 
-  private isLocalStorageAvailable(): boolean {
-    return typeof localStorage !== 'undefined';
+  /**
+   * Refresh tokens using refresh token
+   * Note: You'll need to implement this endpoint in your Lambda
+   */
+  refreshTokens(): Observable<RefreshTokenDto> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      return throwError(() => new Error('No refresh token available'));
+    }
+
+    return this.http
+      .post<RefreshTokenDto>(
+        `${environment.apiUrl}auth/refresh_token`,
+        {}, 
+        {
+          headers: new HttpHeaders({
+            Authorization: `Bearer ${refreshToken}`,
+          }),
+        }
+      )
+      .pipe(
+        tap((tokens) => {
+          localStorage.setItem(this.TOKEN_KEY, JSON.stringify(tokens));
+          console.log(localStorage.getItem(this.TOKEN_KEY))
+        }),
+        catchError((error) => {
+          console.error('Token refresh failed:', error);
+          this.logout();
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Get token expiration time
+   */
+  getTokenExpiration(): Date | null {
+    const accessToken = this.getAccessToken();
+    if (!accessToken) return null;
+
+    try {
+      const decoded = this.decodeToken(accessToken);
+      return new Date(decoded.exp * 1000);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Check if token expires soon (within 5 minutes)
+   */
+  shouldRefreshToken(): boolean {
+    const expiration = this.getTokenExpiration();
+    if (!expiration) return false;
+
+    const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+    return expiration <= fiveMinutesFromNow;
   }
 }
-

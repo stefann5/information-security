@@ -20,12 +20,12 @@
                         <!-- First Name -->
                         <div class="col-12 md:col-6">
                             <div class="field mb-4">
-                                <label for="firstName" class="block font-semibold mb-2">
-                                    <i class="pi pi-user mr-2"></i>First Name *
+                                <label for="name" class="block font-semibold mb-2">
+                                    <i class="pi pi-user mr-2"></i>Name *
                                 </label>
                                 <span class="p-input-icon-left w-full">
-                                    <input pInputText id="firstName" formControlName="firstName"
-                                        placeholder="Enter your first name" class="w-full"
+                                    <input pInputText id="name" formControlName="name"
+                                        placeholder="Enter your name" class="w-full"
                                         [class.p-invalid]="isNameInvalid" [disabled]="isLoading" />
                                 </span>
                                 <small class="p-error block mt-1" *ngIf="isNameInvalid">
@@ -37,12 +37,12 @@
                         <!-- Last Name -->
                         <div class="col-12 md:col-6">
                             <div class="field mb-4">
-                                <label for="lastName" class="block font-semibold mb-2">
-                                    <i class="pi pi-user mr-2"></i>Last Name *
+                                <label for="surname" class="block font-semibold mb-2">
+                                    <i class="pi pi-user mr-2"></i>Surname *
                                 </label>
                                 <span class="p-input-icon-left w-full">
-                                    <input pInputText id="lastName" formControlName="lastName"
-                                        placeholder="Enter your last name" class="w-full"
+                                    <input pInputText id="surname" formControlName="surname"
+                                        placeholder="Enter your surname" class="w-full"
                                         [class.p-invalid]="isSurnameInvalid" [disabled]="isLoading" />
                                 </span>
                                 <small class="p-error block mt-1" *ngIf="isSurnameInvalid">
@@ -54,47 +54,34 @@
 
                     <!-- Username Field -->
                     <div class="field mb-4">
-                        <label for="username" class="block font-semibold mb-2">
-                            <i class="pi pi-at mr-2"></i>Username *
+                        <label for="organization" class="block font-semibold mb-2">
+                            <i class="pi pi-at mr-2"></i>Organization *
                         </label>
                         <span class="p-input-icon-left w-full">
-                            <input pInputText id="username" formControlName="username"
-                                placeholder="Choose a unique username" class="w-full"
+                            <input pInputText id="organization" formControlName="organization"
+                                placeholder="Enter your organization" class="w-full"
                                 [class.p-invalid]="isUsernameInvalid" [disabled]="isLoading" />
                         </span>
-                        <small class="p-error block mt-1" *ngIf="isUsernameInvalid">
-                            {{ usernameErrorMessage }}
+                        <small class="p-error block mt-1" *ngIf="isOrganizationInvalid">
+                            {{ organizationErrorMessage }}
                         </small>
                         <small class="text-color-secondary text-sm mt-1 block">
                             Username can only contain letters, numbers, hyphens, and underscores
                         </small>
                     </div>
-
-                    <!-- Email Field -->
+                                        <!-- Email Field -->
                     <div class="field mb-4">
                         <label for="email" class="block font-semibold mb-2">
                             <i class="pi pi-envelope mr-2"></i>Email Address *
                         </label>
                         <span class="p-input-icon-left w-full">
-                            <input pInputText id="email" formControlName="email" type="email"
+                            <input pInputText id="username" formControlName="username" type="username"
                                 placeholder="Enter your email address" class="w-full" [class.p-invalid]="isUsernameInvalid"
                                 [disabled]="isLoading" />
                         </span>
                         <small class="p-error block mt-1" *ngIf="isUsernameInvalid">
                             {{ emailErrorMessage }}
                         </small>
-                    </div>
-
-                    <!-- Date of Birth Field -->
-                    <div class="field mb-4">
-                        <label for="dateOfBirth" class="block font-semibold mb-2">
-                            <i class="pi pi-calendar mr-2"></i>Date of Birth *
-                        </label>
-                        <p-date-picker formControlName="dateOfBirth" inputId="dateOfBirth"
-                            placeholder="Select your date of birth" class="w-full" inputStyleClass="w-full"
-                             [disabled]="isLoading" [maxDate]="maxDate"
-                            [minDate]="minDate" [showIcon]="true" icon="pi pi-calendar" dateFormat="dd/mm/yy"
-                            ></p-date-picker>
                     </div>
 
                     <!-- Password Fields Row -->

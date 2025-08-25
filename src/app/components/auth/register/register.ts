@@ -78,27 +78,24 @@ export class Register implements OnInit, OnDestroy {
 
   private initializeForm(): void {
     this.registerForm = this.formBuilder.group({
-      firstName: ['', [
+      name: ['', [
         Validators.required,
         Validators.minLength(2),
         Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/)
       ]],
-      lastName: ['', [
+      surname: ['', [
         Validators.required,
         Validators.minLength(2),
         Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/)
       ]],
-      username: ['', [
+      organization: ['', [
         Validators.required,
         Validators.minLength(3),
         Validators.pattern(/^[a-zA-Z0-9_-]+$/)
       ]],
-      email: ['', [
+      username: ['', [
         Validators.required,
         Validators.email
-      ]],
-      dateOfBirth: ['', [
-        Validators.required
       ]],
       password: ['', [
         Validators.required,
@@ -347,6 +344,13 @@ export class Register implements OnInit, OnDestroy {
     const control = this.userNameControl;
     if (control?.errors?.['required']) return 'Username is required';
     if (control?.errors?.['minlength']) return 'Username must be at least 3 characters';
+    if (control?.errors?.['pattern']) return 'Username can only contain letters, numbers, hyphens, and underscores';
+    return '';
+  }
+
+  get organizationErrorMessage(): string {
+    const control = this.userNameControl;
+    if (control?.errors?.['required']) return 'Username is required';
     if (control?.errors?.['pattern']) return 'Username can only contain letters, numbers, hyphens, and underscores';
     return '';
   }
