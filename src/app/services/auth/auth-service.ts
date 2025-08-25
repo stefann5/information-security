@@ -11,6 +11,10 @@ import { RegisterResponseDto } from '../../dto/auth/RegisterResponseDTO';
 import { RefreshTokenDto } from '../../dto/auth/RefreshTokenDTO';
 import { User } from '../../model/auth/user';
 
+export interface StringBody {
+  message: string;
+}
+
 export interface DecodedToken {
   sub: string;
   exp: number;
@@ -65,9 +69,11 @@ export class AuthService {
       );
   }
 
-  test(): Observable<String> {
-    return this.http.get<String>(`${environment.apiUrl}auth/test`).pipe(
-      tap((response) => {}),
+  test(): Observable<StringBody> {
+    return this.http.get<StringBody>(`${environment.apiUrl}auth/test`).pipe(
+      tap((response) => {
+        console.log('dafdasf');
+      }),
       catchError((error) => {
         console.error('Login failed:', error);
         return throwError(() => error);
@@ -201,7 +207,7 @@ export class AuthService {
     return this.http
       .post<RefreshTokenDto>(
         `${environment.apiUrl}auth/refresh_token`,
-        {}, 
+        {},
         {
           headers: new HttpHeaders({
             Authorization: `Bearer ${refreshToken}`,
@@ -211,7 +217,7 @@ export class AuthService {
       .pipe(
         tap((tokens) => {
           localStorage.setItem(this.TOKEN_KEY, JSON.stringify(tokens));
-          console.log(localStorage.getItem(this.TOKEN_KEY))
+          console.log(localStorage.getItem(this.TOKEN_KEY));
         }),
         catchError((error) => {
           console.error('Token refresh failed:', error);
@@ -245,5 +251,29 @@ export class AuthService {
 
     const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
     return expiration <= fiveMinutesFromNow;
+  }
+
+  IsC(): boolean {
+    return this.getRoleFromToken() == 'C';
+  }
+
+  IsCA(): boolean {
+    return this.getRoleFromToken() == 'CA';
+  }
+
+  IsAdmin(): boolean {
+    return this.getRoleFromToken() == 'A';
+  }
+
+  getRoleFromToken(): string | undefined {
+    if (this.getStoredTokens()?.accessToken != null) {
+      const accessToken = this.getStoredTokens()?.accessToken;
+      if (accessToken) {
+        const tokenInfo = this.decodeToken(accessToken);
+        const role = tokenInfo.role;
+        return role;
+      }
+    }
+    return '';
   }
 }

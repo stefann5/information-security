@@ -92,41 +92,50 @@ export class AuthInterceptor implements HttpInterceptor {
     return this.excludedUrls.some(excludedUrl => url.includes(excludedUrl));
   }
 
-  /**
-   * Handle 401 Unauthorized errors by attempting to refresh token
-   */
   private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     if (!this.isRefreshing) {
-      this.isRefreshing = true;
-      this.refreshTokenSubject.next(null);
-      console.log('trying to refresh token');
+    this.isRefreshing = true;
+    this.refreshTokenSubject.next(null);
+    console.log('trying to refresh token');
 
-      // Check if we should attempt token refresh
-      if (this.authService.getRefreshToken()) {
-        return this.authService.refreshTokens().pipe(
-          switchMap((tokens: any) => {
-            this.isRefreshing = false;
-            this.refreshTokenSubject.next(tokens.accessToken);
-            
-            // Retry the original request with new token
-            const newRequest = this.addAuthHeader(request);
-            return next.handle(newRequest);
-          }),
-          catchError((error) => {
-            this.isRefreshing = false;
-            this.authService.logout();
-            return throwError(() => error);
-          }),
-          finalize(() => {
-            this.isRefreshing = false;
-          })
-        );
-      } else {
-        // No refresh token available, logout user
-        this.isRefreshing = false;
-        this.authService.logout();
-        return throwError(() => new Error('Authentication required'));
-      }
+    if (this.authService.getRefreshToken()) {
+      return this.authService.refreshTokens().pipe(
+        switchMap((tokens: RefreshTokenDto) => {
+          console.log('✅ Got new tokens:', tokens);
+          
+          // 🔥 SAČUVAJ TOKENS TRAJNO OVDE!
+          localStorage.setItem("secure_app_tokens", JSON.stringify(tokens));
+          console.log('✅ Tokens permanently saved to localStorage');
+          
+          this.isRefreshing = false;
+          this.refreshTokenSubject.next(tokens.accessToken);
+          
+          // Retry sa novim tokenom
+          const newRequest = request.clone({
+            setHeaders: {
+              Authorization: `Bearer ${tokens.accessToken}`
+            }
+          });
+          
+          console.log('🔄 Retrying request with new token');
+          return next.handle(newRequest);
+        }),
+        catchError((error) => {
+          console.error('❌ Refresh failed in interceptor:', error);
+          this.isRefreshing = false;
+          this.refreshTokenSubject.next(null);
+          this.authService.logout();
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.isRefreshing = false;
+        })
+      );
+    } else {
+      this.isRefreshing = false;
+      this.authService.logout();
+      return throwError(() => new Error('Authentication required'));
+    }
     } else {
       // Token refresh is already in progress, wait for it to complete
       return this.refreshTokenSubject.pipe(
