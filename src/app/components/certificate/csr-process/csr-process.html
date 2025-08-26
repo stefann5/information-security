@@ -1,0 +1,218 @@
+<p-toast position="top-center"></p-toast>
+
+    <div class="grid">
+      <div class="col-12">
+        <p-card>
+          <ng-template pTemplate="header">
+            <div class="p-4 border-bottom-1 surface-border">
+              <h2 class="m-0">Process Certificate Signing Request (CSR)</h2>
+              <p class="m-0 text-color-secondary">
+                Upload and process a Certificate Signing Request to issue a certificate
+              </p>
+            </div>
+          </ng-template>
+
+          <div class="p-4">
+            <p-message 
+              severity="info" 
+              text="CSR (Certificate Signing Request) is a message sent to a Certificate Authority to apply for a digital certificate. Upload your CSR file or paste the CSR content below."
+              styleClass="w-full mb-4">
+            </p-message>
+
+            <form [formGroup]="csrForm" (ngSubmit)="onSubmit()">
+              <p-tabs value="0">
+                <!-- CSR Upload Tab -->
+                 <p-tablist>
+                    <p-tab value="0">Upload CSR</p-tab>
+                    <p-tab value="1">Certificate Settings</p-tab>
+                </p-tablist>
+                <p-tabpanel header="Upload CSR" leftIcon="pi pi-upload" value="0">
+                  <div class="p-4">
+                    <h4>Upload CSR File</h4>
+                    <p-fileUpload
+                      mode="basic"
+                      name="csr"
+                      accept=".csr,.pem,.txt"
+                      [maxFileSize]="1000000"
+                      [auto]="false"
+                      chooseLabel="Choose CSR File"
+                      (onSelect)="onCSRFileSelect($event)"
+                      styleClass="w-full mb-4">
+                    </p-fileUpload>
+
+                    <p-divider align="center" type="solid">
+                      <span class="text-color-secondary text-sm">OR</span>
+                    </p-divider>
+
+                    <h4>Paste CSR Content</h4>
+                    <label for="csrData" class="block font-medium mb-2">
+                      CSR Data (PEM Format) <span class="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      pInputTextarea
+                      id="csrData"
+                      formControlName="csrData"
+                      rows="15"
+                      cols="60"
+                      placeholder="-----BEGIN CERTIFICATE REQUEST-----
+MIICWjCCAUICAQAwFTETMBEGA1UEAwwKZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3
+...
+-----END CERTIFICATE REQUEST-----"
+                      styleClass="w-full font-mono text-sm">
+                    </textarea>
+                    <small class="p-error" *ngIf="isFieldInvalid('csrData')">
+                      CSR data is required
+                    </small>
+                    <small class="text-color-secondary block mt-1">
+                      Paste the complete CSR including BEGIN and END markers
+                    </small>
+
+                    <!-- CSR Info Display -->
+                    <div class="mt-4" *ngIf="csrInfo">
+                      <h5>CSR Information</h5>
+                      <div class="surface-100 border-round p-3">
+                        <div class="grid">
+                          <div class="col-12 md:col-6">
+                            <strong>Subject:</strong>
+                            <div class="text-sm">{{csrInfo.subject}}</div>
+                          </div>
+                          <div class="col-12 md:col-6">
+                            <strong>Public Key:</strong>
+                            <div class="text-sm">{{csrInfo.publicKeyAlgorithm}} {{csrInfo.keySize}} bits</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </p-tabpanel>
+
+                <!-- Certificate Settings Tab -->
+                <p-tabpanel header="Certificate Settings" leftIcon="pi pi-cog" value="1">
+                  <div class="p-4">
+                    <div class="grid">
+                      <div class="col-12 md:col-6">
+                        <label for="issuerCertificateId" class="block font-medium mb-2">
+                          Issuer CA Certificate <span class="text-red-500">*</span>
+                        </label>
+                        <p-select 
+                          id="issuerCertificateId"
+                          formControlName="issuerCertificateId"
+                          [options]="caCertificates"
+                          placeholder="Select issuer CA"
+                          optionLabel="commonName"
+                          optionValue="id"
+                          styleClass="w-full"
+                          (onChange)="onIssuerSelect($event.value)">
+                          <ng-template let-ca pTemplate="item">
+                            <div class="flex align-items-center">
+                              <div>
+                                <div class="font-medium">{{ca.commonName}}</div>
+                                <div class="text-sm text-color-secondary">{{ca.subjectDN}}</div>
+                              </div>
+                            </div>
+                          </ng-template>
+                        </p-select>
+                        <small class="p-error" *ngIf="isFieldInvalid('issuerCertificateId')">
+                          Issuer certificate is required
+                        </small>
+                      </div>
+
+                      <div class="col-12 md:col-6">
+                        <label for="validityDays" class="block font-medium mb-2">
+                          Validity Period (Days) <span class="text-red-500">*</span>
+                        </label>
+                        <p-inputNumber 
+                          id="validityDays"
+                          formControlName="validityDays"
+                          [min]="1"
+                          [max]="3650"
+                          suffix=" days"
+                          placeholder="365"
+                          styleClass="w-full">
+                        </p-inputNumber>
+                        <small class="p-error" *ngIf="isFieldInvalid('validityDays')">
+                          Validity period is required
+                        </small>
+                        <small class="text-color-secondary block mt-1">
+                          Maximum validity period may be limited by CA policy
+                        </small>
+                      </div>
+
+                      <div class="col-12 md:col-6" *ngIf="availableTemplates.length > 0">
+                        <label for="templateId" class="block font-medium mb-2">Template (Optional)</label>
+                        <p-select 
+                          id="templateId"
+                          formControlName="templateId"
+                          [options]="availableTemplates"
+                          placeholder="Select template"
+                          optionLabel="templateName"
+                          optionValue="id"
+                          styleClass="w-full"
+                          (onChange)="onTemplateSelect($event.value)">
+                          <ng-template let-template pTemplate="item">
+                            <div>
+                              <div class="font-medium">{{template.templateName}}</div>
+                              <div class="text-sm text-color-secondary">
+                                Max {{template.maxTtlDays}} days
+                              </div>
+                            </div>
+                          </ng-template>
+                        </p-select>
+                      </div>
+
+                      <div class="col-12" *ngIf="selectedTemplate">
+                        <h5>Template Information</h5>
+                        <div class="surface-100 border-round p-3">
+                          <div class="grid">
+                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.commonNameRegex">
+                              <strong>CN Pattern:</strong>
+                              <div class="text-sm font-mono">{{selectedTemplate.commonNameRegex}}</div>
+                            </div>
+                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.defaultKeyUsage">
+                              <strong>Key Usage:</strong>
+                              <div class="text-sm">{{selectedTemplate.defaultKeyUsage}}</div>
+                            </div>
+                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.maxTtlDays">
+                              <strong>Max Validity:</strong>
+                              <div class="text-sm">{{selectedTemplate.maxTtlDays}} days</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </p-tabpanel>
+              </p-tabs>
+
+              <div class="flex justify-content-between align-items-center mt-4 pt-4 border-top-1 surface-border">
+                <p-button 
+                  label="Back to Certificates" 
+                  icon="pi pi-arrow-left" 
+                  severity="secondary"
+                  [text]="true"
+                  (onClick)="goBack()">
+                </p-button>
+                
+                <div class="flex gap-2">
+                  <p-button 
+                    label="Clear Form" 
+                    icon="pi pi-times" 
+                    severity="secondary"
+                    [text]="true"
+                    (onClick)="clearForm()">
+                  </p-button>
+                  
+                  <p-button 
+                    type="submit"
+                    label="Process CSR" 
+                    icon="pi pi-check" 
+                    [loading]="isLoading"
+                    [disabled]="csrForm.invalid || isLoading">
+                  </p-button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </p-card>
+      </div>
+    </div>

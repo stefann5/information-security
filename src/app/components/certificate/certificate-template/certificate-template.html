@@ -1,0 +1,308 @@
+<p-toast position="top-center"></p-toast>
+    <p-confirmDialog></p-confirmDialog>
+
+    <!-- Create/Edit Template Dialog -->
+    <p-dialog 
+      [(visible)]="showTemplateDialog" 
+      [header]="isEditMode ? 'Edit Template' : 'Create Template'"
+      modal="true"
+      styleClass="p-fluid overflow-visible"
+      [style]="{width: '600px'}"
+      [maximizable]="true">
+      
+      <form [formGroup]="templateForm" (ngSubmit)="saveTemplate()">
+        <div class="grid">
+          <div class="col-12">
+            <label for="templateName" class="block font-medium mb-2">
+              Template Name <span class="text-red-500">*</span>
+            </label>
+            <input 
+              pInputText 
+              id="templateName"
+              formControlName="templateName"
+              placeholder="e.g., Server Certificate Template"
+              styleClass="w-full" />
+            <small class="p-error" *ngIf="isFieldInvalid('templateName')">
+              Template name is required
+            </small>
+          </div>
+
+          <div class="col-12">
+            <label for="caIssuerId" class="block font-medium mb-2">
+              CA Issuer <span class="text-red-500">*</span>
+            </label>
+            <p-select 
+              id="caIssuerId"
+              formControlName="caIssuerId"
+              [options]="caCertificates"
+              placeholder="Select CA certificate"
+              optionLabel="commonName"
+              optionValue="id"
+              class="w-full overflow-visible"
+              >
+              <ng-template let-ca pTemplate="item">
+                <div>
+                  <div class="font-medium">{{ca.commonName}}</div>
+                  <div class="text-sm text-color-secondary">{{ca.subjectDN}}</div>
+                </div>
+              </ng-template>
+            </p-select>
+            <small class="p-error" *ngIf="isFieldInvalid('caIssuerId')">
+              CA issuer is required
+            </small>
+          </div>
+
+          <div class="col-12 md:col-6">
+            <label for="commonNameRegex" class="block font-medium mb-2">
+              Common Name Pattern
+            </label>
+            <input 
+              pInputText 
+              id="commonNameRegex"
+              formControlName="commonNameRegex"
+              placeholder="e.g., .*\.example\.com"
+              styleClass="w-full" />
+            <small class="text-color-secondary text-sm">
+              Regular expression to validate CN (optional)
+            </small>
+          </div>
+
+          <div class="col-12 md:col-6">
+            <label for="sanRegex" class="block font-medium mb-2">
+              SAN Pattern
+            </label>
+            <input 
+              pInputText 
+              id="sanRegex"
+              formControlName="sanRegex"
+              placeholder="e.g., .*\.example\.com"
+              styleClass="w-full" />
+            <small class="text-color-secondary text-sm">
+              Regular expression to validate SAN (optional)
+            </small>
+          </div>
+
+          <div class="col-12 md:col-6">
+            <label for="maxTtlDays" class="block font-medium mb-2">
+              Maximum Validity (Days)
+            </label>
+            <p-inputNumber 
+              id="maxTtlDays"
+              formControlName="maxTtlDays"
+              [min]="1"
+              [max]="7300"
+              suffix=" days"
+              placeholder="365"
+              styleClass="w-full">
+            </p-inputNumber>
+            <small class="text-color-secondary text-sm">
+              Maximum certificate validity period
+            </small>
+          </div>
+
+          <div class="col-12 md:col-6">
+            <label for="defaultKeyUsage" class="block font-medium mb-2">
+              Default Key Usage
+            </label>
+            <p-multiSelect 
+              id="defaultKeyUsage"
+              formControlName="defaultKeyUsageList"
+              [options]="keyUsageOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select key usage"
+              styleClass="w-full">
+            </p-multiSelect>
+          </div>
+
+          <div class="col-12">
+            <label for="defaultExtendedKeyUsage" class="block font-medium mb-2">
+              Default Extended Key Usage
+            </label>
+            <p-multiSelect 
+              id="defaultExtendedKeyUsage"
+              formControlName="defaultExtendedKeyUsageList"
+              [options]="extendedKeyUsageOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select extended key usage"
+              styleClass="w-full">
+            </p-multiSelect>
+          </div>
+        </div>
+        
+        <div>
+          <p-button 
+            label="Cancel" 
+            icon="pi pi-times" 
+            [text]="true"
+            (onClick)="hideDialog()">
+          </p-button>
+          <p-button 
+            type="submit"
+            [label]="isEditMode ? 'Update' : 'Create'" 
+            icon="pi pi-check"
+            [loading]="saving"
+            [disabled]="templateForm.invalid || saving">
+          </p-button>
+        </div>
+      </form>
+    </p-dialog>
+
+    <div class="grid">
+      <div class="col-12">
+        <p-card>
+          <ng-template pTemplate="header">
+            <p-toolbar styleClass="mb-4 gap-2">
+              <ng-template pTemplate="left">
+                <div>
+                  <h2 class="m-0 mb-1">Certificate Templates</h2>
+                  <p class="m-0 text-color-secondary">
+                    Manage certificate templates for standardized certificate issuance
+                  </p>
+                </div>
+              </ng-template>
+              
+              <ng-template pTemplate="right">
+                <p-button 
+                  *ngIf="canManageTemplates()"
+                  label="Create Template" 
+                  icon="pi pi-plus" 
+                  (onClick)="showCreateDialog()">
+                </p-button>
+              </ng-template>
+            </p-toolbar>
+          </ng-template>
+
+          <p-table 
+            [value]="templates" 
+            [loading]="loading"
+            [globalFilterFields]="['templateName', 'caIssuerName', 'createdBy']"
+            [paginator]="true" 
+            [rows]="10"
+            responsiveLayout="scroll"
+            [showCurrentPageReport]="true"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} templates"
+            styleClass="p-datatable-striped">
+            
+            <ng-template #caption>
+              <div class="flex justify-content-between align-items-center">
+                <h5 class="m-0">Available Templates</h5>
+                <span class="p-input-icon-left">
+                  <i class="pi pi-search"></i>
+                  <input 
+                    pInputText 
+                    type="text" 
+                    (input)="applyFilterGlobal($any($event).target.value, 'contains')" 
+                    placeholder="Search templates..." 
+                    #dt />
+                </span>
+              </div>
+            </ng-template>
+
+            <ng-template #header>
+              <tr>
+                <th pSortableColumn="templateName">Name <p-sortIcon field="templateName"></p-sortIcon></th>
+                <th pSortableColumn="caIssuerName">CA Issuer <p-sortIcon field="caIssuerName"></p-sortIcon></th>
+                <th>CN Pattern</th>
+                <th>Max Validity</th>
+                <th>Key Usage</th>
+                <th pSortableColumn="createdBy">Created By <p-sortIcon field="createdBy"></p-sortIcon></th>
+                <th pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+                <th>Actions</th>
+              </tr>
+            </ng-template>
+
+            <ng-template #body let-template>
+              <tr>
+                <td>
+                  <div class="font-medium">{{template.templateName}}</div>
+                </td>
+                <td>
+                  <div class="text-sm">{{extractCNFromDN(template.caIssuerName)}}</div>
+                  <div class="text-xs text-color-secondary">{{template.caIssuerName}}</div>
+                </td>
+                <td>
+                  <code class="text-xs" *ngIf="template.commonNameRegex">
+                    {{template.commonNameRegex}}
+                  </code>
+                  <span class="text-color-secondary" *ngIf="!template.commonNameRegex">
+                    No pattern
+                  </span>
+                </td>
+                <td>
+                  <p-badge 
+                    *ngIf="template.maxTtlDays"
+                    [value]="template.maxTtlDays + ' days'" 
+                    severity="info">
+                  </p-badge>
+                  <span class="text-color-secondary" *ngIf="!template.maxTtlDays">
+                    No limit
+                  </span>
+                </td>
+                <td>
+                  <div class="flex flex-wrap gap-1">
+                    <p-tag 
+                      *ngFor="let usage of getKeyUsageArray(template.defaultKeyUsage)"
+                      [value]="usage" 
+                      severity="secondary"
+                      styleClass="text-xs">
+                    </p-tag>
+                  </div>
+                  <span class="text-color-secondary text-sm" *ngIf="!template.defaultKeyUsage">
+                    None specified
+                  </span>
+                </td>
+                <td>{{template.createdBy}}</td>
+                <td>{{template.createdAt | date:'shortDate'}}</td>
+                <td>
+                  <div class="flex gap-1">
+                    <p-button 
+                      icon="pi pi-eye" 
+                      size="small" 
+                      [text]="true"
+                      pTooltip="View Details"
+                      (onClick)="viewTemplate(template)">
+                    </p-button>
+                    
+                    <p-button 
+                      *ngIf="canEditTemplate(template)"
+                      icon="pi pi-pencil" 
+                      size="small" 
+                      [text]="true"
+                      severity="secondary"
+                      pTooltip="Edit Template"
+                      (onClick)="editTemplate(template)">
+                    </p-button>
+
+                    <p-button 
+                      *ngIf="canDeleteTemplate(template)"
+                      icon="pi pi-trash" 
+                      size="small" 
+                      [text]="true"
+                      severity="danger"
+                      pTooltip="Delete Template"
+                      (onClick)="deleteTemplate(template)">
+                    </p-button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+            <ng-template #emptymessage>
+              <tr>
+                <td colspan="8" class="text-center p-4">
+                  <div class="text-color-secondary">
+                    <i class="pi pi-bookmark text-6xl mb-3"></i>
+                    <div>No templates found.</div>
+                    <div *ngIf="canManageTemplates()" class="mt-2">
+                      <p-button label="Create Your First Template" (onClick)="showCreateDialog()"></p-button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </p-card>
+      </div>
+    </div>

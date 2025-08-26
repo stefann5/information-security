@@ -92,6 +92,9 @@ export class AuthService {
 
     // Update subjects
     this.isAuthenticatedSubject.next(true);
+    
+    // Redirect to dashboard
+    this.router.navigate(['/app']);
   }
 
   /**

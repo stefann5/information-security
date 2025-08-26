@@ -1,0 +1,156 @@
+<p-toast position="top-center"></p-toast>
+    <p-confirmDialog></p-confirmDialog>
+
+    <div class="card">
+      <p-toolbar styleClass="mb-4 gap-2">
+        <ng-template pTemplate="left">
+          <h2 class="m-0">Certificate Management</h2>
+        </ng-template>
+        
+        <ng-template pTemplate="right">
+          <p-button 
+            *ngIf="canIssue()"
+            label="Issue Certificate" 
+            icon="pi pi-plus" 
+            class="mr-2" 
+            (onClick)="navigateToIssue()">
+          </p-button>
+          
+          <p-button 
+            *ngIf="canIssue()"
+            label="Process CSR" 
+            icon="pi pi-upload" 
+            class="mr-2" 
+            severity="secondary"
+            (onClick)="navigateToCSR()">
+          </p-button>
+
+          <p-button 
+            *ngIf="canManageTemplates()"
+            label="Templates" 
+            icon="pi pi-bookmark" 
+            severity="info"
+            (onClick)="navigateToTemplates()">
+          </p-button>
+        </ng-template>
+      </p-toolbar>
+
+      <p-table 
+        [value]="certificates" 
+        [loading]="loading"
+        [globalFilterFields]="['commonName', 'subjectDN', 'serialNumber', 'certificateType']"
+        [paginator]="true" 
+        [rows]="10"
+        responsiveLayout="scroll"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} certificates"
+        styleClass="p-datatable-striped">
+        
+        <ng-template pTemplate="caption">
+          <div class="flex justify-content-between align-items-center">
+            <h5 class="m-0">My Certificates</h5>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input 
+                pInputText 
+                type="text" 
+                placeholder="Search certificates..." 
+                #dt />
+              <!-- <input 
+                pInputText 
+                type="text" 
+                (input)="dt.filterGlobal($any($event).target.value, 'contains')" 
+                placeholder="Search certificates..." 
+                #dt /> -->
+            </span>
+          </div>
+        </ng-template>
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="commonName">Name <p-sortIcon field="commonName"></p-sortIcon></th>
+            <th pSortableColumn="certificateType">Type <p-sortIcon field="certificateType"></p-sortIcon></th>
+            <th pSortableColumn="serialNumber">Serial <p-sortIcon field="serialNumber"></p-sortIcon></th>
+            <th pSortableColumn="validFrom">Valid From <p-sortIcon field="validFrom"></p-sortIcon></th>
+            <th pSortableColumn="validTo">Valid To <p-sortIcon field="validTo"></p-sortIcon></th>
+            <th pSortableColumn="issuerCommonName">Issuer <p-sortIcon field="issuerCommonName"></p-sortIcon></th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-cert>
+          <tr>
+            <td>
+              <div class="font-medium">{{cert.commonName || 'N/A'}}</div>
+              <div class="text-sm text-color-secondary">{{cert.subjectDN}}</div>
+            </td>
+            <td>
+              <p-tag 
+                [value]="cert.certificateType" 
+                [severity]="getCertTypeSeverity(cert.certificateType)">
+              </p-tag>
+            </td>
+            <td>
+              <code class="text-sm">{{cert.serialNumber}}</code>
+            </td>
+            <td>{{cert.validFrom | date:'shortDate'}}</td>
+            <td [class]="isExpiringSoon(cert.validTo) ? 'text-orange-500' : ''">
+              {{cert.validTo | date:'shortDate'}}
+              <i *ngIf="isExpiringSoon(cert.validTo)" class="pi pi-exclamation-triangle ml-2 text-orange-500"></i>
+            </td>
+            <td>{{cert.issuerCommonName}}</td>
+            <td>
+              <p-tag 
+                [value]="cert.revoked ? 'Revoked' : 'Active'" 
+                [severity]="cert.revoked ? 'danger' : 'success'">
+              </p-tag>
+            </td>
+            <td>
+              <div class="flex gap-1">
+                <p-button 
+                  icon="pi pi-eye" 
+                  size="small" 
+                  [text]="true"
+                  pTooltip="View Details"
+                  (onClick)="viewCertificate(cert.id)">
+                </p-button>
+                
+                <p-button 
+                  icon="pi pi-download" 
+                  size="small" 
+                  [text]="true"
+                  severity="secondary"
+                  pTooltip="Download"
+                  (onClick)="downloadCertificate(cert)">
+                </p-button>
+
+                <p-button 
+                  *ngIf="!cert.revoked && canRevoke(cert)"
+                  icon="pi pi-ban" 
+                  size="small" 
+                  [text]="true"
+                  severity="danger"
+                  pTooltip="Revoke"
+                  (onClick)="revokeCertificate(cert)">
+                </p-button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="text-center p-4">
+              <div class="text-color-secondary">
+                <i class="pi pi-file text-6xl mb-3"></i>
+                <div>No certificates found.</div>
+                <div *ngIf="canIssue()" class="mt-2">
+                  <p-button label="Issue Your First Certificate" (onClick)="navigateToIssue()"></p-button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>

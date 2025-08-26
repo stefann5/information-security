@@ -1,0 +1,80 @@
+<p-toast position="top-center"></p-toast>
+
+    <!-- Top Navigation Bar -->
+    <p-menubar [model]="menuItems">
+      <ng-template pTemplate="start">
+        <div class="flex align-items-center">
+          <i class="pi pi-shield text-2xl mr-2 text-primary"></i>
+          <span class="font-bold text-xl">PKI Manager</span>
+        </div>
+      </ng-template>
+      
+      <ng-template pTemplate="end">
+        <div class="flex align-items-center gap-2">
+          <span class="text-sm">Welcome, {{getCurrentUserName()}}</span>
+          <p-button 
+            icon="pi pi-sign-out" 
+            [text]="true"
+            pTooltip="Logout"
+            (onClick)="logout()">
+          </p-button>
+        </div>
+      </ng-template>
+    </p-menubar>
+
+    <!-- Main Content Area -->
+    <div class="layout-content">
+      <!-- Quick Stats Cards (shown on certificates page) -->
+      <div class="grid mb-4" *ngIf="showQuickStats()">
+        <div class="col-12 lg:col-3 md:col-6">
+          <p-card styleClass="h-full">
+            <div class="flex align-items-center">
+              <div class="flex-1">
+                <div class="text-2xl font-bold text-primary">{{certificateCount}}</div>
+                <div class="text-color-secondary">Total Certificates</div>
+              </div>
+              <i class="pi pi-file text-4xl text-blue-500"></i>
+            </div>
+          </p-card>
+        </div>
+        
+        <div class="col-12 lg:col-3 md:col-6">
+          <p-card styleClass="h-full">
+            <div class="flex align-items-center">
+              <div class="flex-1">
+                <div class="text-2xl font-bold text-green-600">{{activeCertificates}}</div>
+                <div class="text-color-secondary">Active Certificates</div>
+              </div>
+              <i class="pi pi-check-circle text-4xl text-green-500"></i>
+            </div>
+          </p-card>
+        </div>
+        
+        <div class="col-12 lg:col-3 md:col-6">
+          <p-card styleClass="h-full">
+            <div class="flex align-items-center">
+              <div class="flex-1">
+                <div class="text-2xl font-bold text-orange-600">{{expiringSoon}}</div>
+                <div class="text-color-secondary">Expiring Soon</div>
+              </div>
+              <i class="pi pi-exclamation-triangle text-4xl text-orange-500"></i>
+            </div>
+          </p-card>
+        </div>
+        
+        <div class="col-12 lg:col-3 md:col-6" *ngIf="canManageTemplates()">
+          <p-card styleClass="h-full">
+            <div class="flex align-items-center">
+              <div class="flex-1">
+                <div class="text-2xl font-bold text-purple-600">{{templateCount}}</div>
+                <div class="text-color-secondary">Templates</div>
+              </div>
+              <i class="pi pi-bookmark text-4xl text-purple-500"></i>
+            </div>
+          </p-card>
+        </div>
+      </div>
+
+      <!-- Router Outlet for Components -->
+      <router-outlet></router-outlet>
+    </div>
