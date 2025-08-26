@@ -69,18 +69,6 @@ export class AuthService {
       );
   }
 
-  test(): Observable<StringBody> {
-    return this.http.get<StringBody>(`${environment.apiUrl}auth/test`).pipe(
-      tap((response) => {
-        console.log('dafdasf');
-      }),
-      catchError((error) => {
-        console.error('Login failed:', error);
-        return throwError(() => error);
-      })
-    );
-  }
-
   /**
    * Register new user
    */

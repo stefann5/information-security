@@ -1,8 +1,15 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { map, Subject, takeUntil } from 'rxjs';
 
 // PrimeNG Standalone Imports
 import { CardModule } from 'primeng/card';
@@ -15,11 +22,13 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '../../../services/auth/auth-service';
-
-
+import { zxcvbn } from '@zxcvbn-ts/core';
+import { PasswordCheckService } from '../../../services/auth/password-check-service';
 
 // Custom Validators
-function passwordMatchValidator(control: AbstractControl): { [key: string]: any } | null {
+function passwordMatchValidator(
+  control: AbstractControl
+): { [key: string]: any } | null {
   const password = control.get('password');
   const confirmPassword = control.get('confirmPassword');
 
@@ -28,7 +37,6 @@ function passwordMatchValidator(control: AbstractControl): { [key: string]: any 
   }
   return null;
 }
-
 
 @Component({
   selector: 'app-register',
@@ -44,10 +52,10 @@ function passwordMatchValidator(control: AbstractControl): { [key: string]: any 
     CheckboxModule,
     ToastModule,
     ProgressSpinnerModule,
-    DatePickerModule
+    DatePickerModule,
   ],
   providers: [MessageService],
-  templateUrl: 'register.html'
+  templateUrl: 'register.html',
 })
 export class Register implements OnInit, OnDestroy {
   registerForm!: FormGroup;
@@ -56,13 +64,16 @@ export class Register implements OnInit, OnDestroy {
   maxDate = new Date();
   minDate = new Date(1);
 
+  passwordStrength: 'weak' | 'medium' | 'strong' | null = null;
+
   private destroy$ = new Subject<void>();
 
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
     private messageService: MessageService,
-    private authService: AuthService
+    private authService: AuthService,
+    private passwordCheckService: PasswordCheckService
   ) {
     this.initializeForm();
   }
@@ -76,42 +87,99 @@ export class Register implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  onPasswordInput(event: any) {
+    const value = event.target.value;
+    if (!value) {
+      this.passwordStrength = null;
+      return;
+    }
+
+    const result = zxcvbn(value);
+    if (result.score < 2) {
+      this.passwordStrength = 'weak';
+    } else if (result.score === 2) {
+      this.passwordStrength = 'medium';
+    } else {
+      this.passwordStrength = 'strong';
+    }
+  }
+
   private initializeForm(): void {
-    this.registerForm = this.formBuilder.group({
-      name: ['', [
-        Validators.required,
-        Validators.minLength(2),
-        Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/)
-      ]],
-      surname: ['', [
-        Validators.required,
-        Validators.minLength(2),
-        Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/)
-      ]],
-      organization: ['', [
-        Validators.required,
-        Validators.minLength(3),
-        Validators.pattern(/^[a-zA-Z0-9_-]+$/)
-      ]],
-      username: ['', [
-        Validators.required,
-        Validators.email
-      ]],
-      password: ['', [
-        Validators.required,
-        Validators.minLength(8),
-        Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).*$/)
-      ]],
-      confirmPassword: ['', [
-        Validators.required
-      ]]
-    }, {
-      validators: passwordMatchValidator
-    });
+    this.registerForm = this.formBuilder.group(
+      {
+        name: [
+          '',
+          [
+            Validators.required,
+            Validators.minLength(2),
+            Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/),
+          ],
+        ],
+        surname: [
+          '',
+          [
+            Validators.required,
+            Validators.minLength(2),
+            Validators.pattern(/^[a-zA-ZÀ-ÿ\s'-]+$/),
+          ],
+        ],
+        organization: [
+          '',
+          [
+            Validators.required,
+            Validators.minLength(3),
+            Validators.pattern(/^[a-zA-Z0-9_-]+$/),
+          ],
+        ],
+        username: ['', [Validators.required, Validators.email]],
+        password: [
+          '',
+          [
+            Validators.required,
+            Validators.minLength(8),
+            Validators.maxLength(64),
+            this.passwordStrengthValidator,
+          ],
+          [this.pwnedPasswordValidator(this.passwordCheckService)],
+        ],
+        confirmPassword: ['', [Validators.required]],
+      },
+      {
+        validators: passwordMatchValidator,
+      }
+    );
+  }
+
+  pwnedPasswordValidator(service: PasswordCheckService) {
+    return (control: AbstractControl) => {
+      if (!control.value) return null;
+
+      return service
+        .checkPwned(control.value)
+        .pipe(map((found) => (found ? { pwnedPassword: true } : null)));
+    };
+  }
+
+  passwordStrengthValidator(control: AbstractControl): ValidationErrors | null {
+    const password = control.value;
+    if (!password) return null;
+
+    const result = zxcvbn(password);
+
+    if (result.score < 2) {
+      return { weakPassword: true };
+    }
+
+    return null;
   }
 
   onSubmit(): void {
-    console.log('Invalid fields:', Object.keys(this.registerForm.controls).filter(key => this.registerForm.get(key)?.invalid));
+    console.log(
+      'Invalid fields:',
+      Object.keys(this.registerForm.controls).filter(
+        (key) => this.registerForm.get(key)?.invalid
+      )
+    );
 
     if (this.registerForm.invalid) {
       this.markFormGroupTouched();
@@ -136,15 +204,17 @@ export class Register implements OnInit, OnDestroy {
       organization: formValue.organization,
     };
 
-    this.authService.register(registrationData)
+    this.authService
+      .register(registrationData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           this.messageService.add({
             severity: 'success',
             summary: 'Registration Successful!',
-            detail: 'Your account has been created. You have to activate your account.',
-            life: 5000
+            detail:
+              'Your account has been created. You have to activate your account.',
+            life: 5000,
           });
           this.isLoading = false;
         },
@@ -154,7 +224,7 @@ export class Register implements OnInit, OnDestroy {
         },
         complete: () => {
           this.isLoading = false;
-        }
+        },
       });
   }
 
@@ -163,7 +233,11 @@ export class Register implements OnInit, OnDestroy {
     let errorDetails: string[] = [];
 
     // Handle server validation errors with details array
-    if (error.error && error.error.details && Array.isArray(error.error.details)) {
+    if (
+      error.error &&
+      error.error.details &&
+      Array.isArray(error.error.details)
+    ) {
       errorMessage = error.error.error || 'Validation failed';
       errorDetails = error.error.details;
     } else {
@@ -188,12 +262,12 @@ export class Register implements OnInit, OnDestroy {
       severity: 'error',
       summary: errorMessage,
       detail: errorDetails.join('\n'),
-      life: 8000
+      life: 8000,
     });
   }
 
   private markFormGroupTouched(): void {
-    Object.keys(this.registerForm.controls).forEach(key => {
+    Object.keys(this.registerForm.controls).forEach((key) => {
       const control = this.registerForm.get(key);
       control?.markAsTouched();
     });
@@ -207,7 +281,7 @@ export class Register implements OnInit, OnDestroy {
     const errorDetails: string[] = [];
 
     // Add field-specific errors
-    invalidFields.forEach(field => {
+    invalidFields.forEach((field) => {
       const fieldDisplayName = this.getFieldDisplayName(field.field);
       const errorMessage = this.getFirstErrorMessage(field.errors);
       errorDetails.push(`${fieldDisplayName}: ${errorMessage}`);
@@ -224,7 +298,7 @@ export class Register implements OnInit, OnDestroy {
         severity: 'error',
         summary: 'Validation Failed',
         detail: errorDetails.join('\n'),
-        life: 8000
+        life: 8000,
       });
     }
   }
@@ -236,7 +310,7 @@ export class Register implements OnInit, OnDestroy {
       confirmPassword: 'Confirm Password',
       name: 'Name',
       surname: 'Surname',
-      organization: 'Organization'
+      organization: 'Organization',
     };
     return displayNames[fieldName] || fieldName;
   }
@@ -244,7 +318,8 @@ export class Register implements OnInit, OnDestroy {
   private getFirstErrorMessage(errors: any): string {
     if (errors.required) return 'is required';
     if (errors.email) return 'must be a valid email address';
-    if (errors.minlength) return `must be at least ${errors.minlength.requiredLength} characters`;
+    if (errors.minlength)
+      return `must be at least ${errors.minlength.requiredLength} characters`;
     if (errors.pattern) return 'format is invalid';
     if (errors.requiredTrue) return 'must be accepted';
     if (errors.tooYoung) return 'must be at least 13 years old';
@@ -252,15 +327,15 @@ export class Register implements OnInit, OnDestroy {
     return 'is invalid';
   }
 
-  private getInvalidFields(): { field: string, errors: any }[] {
-    const invalidFields: { field: string, errors: any }[] = [];
+  private getInvalidFields(): { field: string; errors: any }[] {
+    const invalidFields: { field: string; errors: any }[] = [];
 
-    Object.keys(this.registerForm.controls).forEach(key => {
+    Object.keys(this.registerForm.controls).forEach((key) => {
       const control = this.registerForm.get(key);
       if (control && control.invalid) {
         invalidFields.push({
           field: key,
-          errors: control.errors
+          errors: control.errors,
         });
       }
     });
@@ -268,27 +343,29 @@ export class Register implements OnInit, OnDestroy {
     return invalidFields;
   }
 
-  private formatDate(date: Date): string {
-    if (!date) return '';
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
-  }
-
   navigateToLogin(): void {
     this.router.navigate(['/']);
   }
 
   // Getters for template
-  get userNameControl() { return this.registerForm.get('username'); }
-  get passwordControl() { return this.registerForm.get('password'); }
-  get confirmPasswordControl() { return this.registerForm.get('confirmPassword'); }
-  get nameControl() { return this.registerForm.get('name'); }
-  get surnameControl() { return this.registerForm.get('surname'); }
-  get organizationControl() { return this.registerForm.get('organization'); }
+  get userNameControl() {
+    return this.registerForm.get('username');
+  }
+  get passwordControl() {
+    return this.registerForm.get('password');
+  }
+  get confirmPasswordControl() {
+    return this.registerForm.get('confirmPassword');
+  }
+  get nameControl() {
+    return this.registerForm.get('name');
+  }
+  get surnameControl() {
+    return this.registerForm.get('surname');
+  }
+  get organizationControl() {
+    return this.registerForm.get('organization');
+  }
 
   // Validation state getters
   get isNameInvalid(): boolean {
@@ -318,40 +395,48 @@ export class Register implements OnInit, OnDestroy {
 
   get isConfirmPasswordInvalid(): boolean {
     const control = this.confirmPasswordControl;
-    return !!(control && control.invalid && (control.dirty || control.touched)) ||
-      this.registerForm.errors?.['passwordMismatch'];
+    return (
+      !!(control && control.invalid && (control.dirty || control.touched)) ||
+      this.registerForm.errors?.['passwordMismatch']
+    );
   }
-
 
   // Error message getters
   get firstNameErrorMessage(): string {
     const control = this.nameControl;
     if (control?.errors?.['required']) return 'First name is required';
-    if (control?.errors?.['minlength']) return 'First name must be at least 2 characters';
-    if (control?.errors?.['pattern']) return 'First name can only contain letters, spaces, apostrophes, and hyphens';
+    if (control?.errors?.['minlength'])
+      return 'First name must be at least 2 characters';
+    if (control?.errors?.['pattern'])
+      return 'First name can only contain letters, spaces, apostrophes, and hyphens';
     return '';
   }
 
   get lastNameErrorMessage(): string {
     const control = this.surnameControl;
     if (control?.errors?.['required']) return 'Last name is required';
-    if (control?.errors?.['minlength']) return 'Last name must be at least 2 characters';
-    if (control?.errors?.['pattern']) return 'Last name can only contain letters, spaces, apostrophes, and hyphens';
+    if (control?.errors?.['minlength'])
+      return 'Last name must be at least 2 characters';
+    if (control?.errors?.['pattern'])
+      return 'Last name can only contain letters, spaces, apostrophes, and hyphens';
     return '';
   }
 
   get usernameErrorMessage(): string {
     const control = this.userNameControl;
     if (control?.errors?.['required']) return 'Username is required';
-    if (control?.errors?.['minlength']) return 'Username must be at least 3 characters';
-    if (control?.errors?.['pattern']) return 'Username can only contain letters, numbers, hyphens, and underscores';
+    if (control?.errors?.['minlength'])
+      return 'Username must be at least 3 characters';
+    if (control?.errors?.['pattern'])
+      return 'Username can only contain letters, numbers, hyphens, and underscores';
     return '';
   }
 
   get organizationErrorMessage(): string {
     const control = this.userNameControl;
     if (control?.errors?.['required']) return 'Username is required';
-    if (control?.errors?.['pattern']) return 'Username can only contain letters, numbers, hyphens, and underscores';
+    if (control?.errors?.['pattern'])
+      return 'Username can only contain letters, numbers, hyphens, and underscores';
     return '';
   }
 
@@ -362,19 +447,21 @@ export class Register implements OnInit, OnDestroy {
     return '';
   }
 
-
   get passwordErrorMessage(): string {
     const control = this.passwordControl;
     if (control?.errors?.['required']) return 'Password is required';
-    if (control?.errors?.['minlength']) return 'Password must be at least 8 characters';
-    if (control?.errors?.['pattern']) return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    if (control?.errors?.['minlength'])
+      return 'Password must be at least 8 characters';
+    if (control?.errors?.['pattern'])
+      return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
     return '';
   }
 
   get confirmPasswordErrorMessage(): string {
     const control = this.confirmPasswordControl;
     if (control?.errors?.['required']) return 'Please confirm your password';
-    if (this.registerForm.errors?.['passwordMismatch']) return 'Passwords do not match';
+    if (this.registerForm.errors?.['passwordMismatch'])
+      return 'Passwords do not match';
     return '';
   }
 }
