@@ -102,7 +102,7 @@ MIICWjCCAUICAQAwFTETMBEGA1UEAwwKZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3
                           optionLabel="commonName"
                           optionValue="id"
                           styleClass="w-full"
-                          (onChange)="onIssuerSelect($event.value)">
+                          >
                           <ng-template let-ca pTemplate="item">
                             <div class="flex align-items-center">
                               <div>
@@ -138,47 +138,7 @@ MIICWjCCAUICAQAwFTETMBEGA1UEAwwKZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3
                         </small>
                       </div>
 
-                      <div class="col-12 md:col-6" *ngIf="availableTemplates.length > 0">
-                        <label for="templateId" class="block font-medium mb-2">Template (Optional)</label>
-                        <p-select 
-                          id="templateId"
-                          formControlName="templateId"
-                          [options]="availableTemplates"
-                          placeholder="Select template"
-                          optionLabel="templateName"
-                          optionValue="id"
-                          styleClass="w-full"
-                          (onChange)="onTemplateSelect($event.value)">
-                          <ng-template let-template pTemplate="item">
-                            <div>
-                              <div class="font-medium">{{template.templateName}}</div>
-                              <div class="text-sm text-color-secondary">
-                                Max {{template.maxTtlDays}} days
-                              </div>
-                            </div>
-                          </ng-template>
-                        </p-select>
-                      </div>
-
-                      <div class="col-12" *ngIf="selectedTemplate">
-                        <h5>Template Information</h5>
-                        <div class="surface-100 border-round p-3">
-                          <div class="grid">
-                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.commonNameRegex">
-                              <strong>CN Pattern:</strong>
-                              <div class="text-sm font-mono">{{selectedTemplate.commonNameRegex}}</div>
-                            </div>
-                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.defaultKeyUsage">
-                              <strong>Key Usage:</strong>
-                              <div class="text-sm">{{selectedTemplate.defaultKeyUsage}}</div>
-                            </div>
-                            <div class="col-12 md:col-4" *ngIf="selectedTemplate.maxTtlDays">
-                              <strong>Max Validity:</strong>
-                              <div class="text-sm">{{selectedTemplate.maxTtlDays}} days</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      
                     </div>
                   </div>
                 </p-tabpanel>
