@@ -69,7 +69,7 @@ import { CertificateService } from '../../services/certificate/certificate-servi
 })
 export class Dashboard implements OnInit {
   menuItems: MenuItem[] = [];
-  
+
   // Quick stats
   certificateCount = 0;
   activeCertificates = 0;
@@ -81,7 +81,7 @@ export class Dashboard implements OnInit {
     private certificateService: CertificateService,
     private messageService: MessageService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.initializeMenu();
@@ -96,6 +96,12 @@ export class Dashboard implements OnInit {
         routerLink: '/app/certificates'
       }
     ];
+    
+    this.menuItems.push({
+      label: 'Process CSR',
+      icon: 'pi pi-upload',
+      routerLink: '/app/certificates/csr'
+    });
 
     // Add role-specific menu items
     if (this.canIssue()) {
@@ -105,12 +111,10 @@ export class Dashboard implements OnInit {
         routerLink: '/app/certificates/issue'
       });
 
-      this.menuItems.push({
-        label: 'Process CSR',
-        icon: 'pi pi-upload',
-        routerLink: '/app/certificates/csr'
-      });
+
     }
+
+
 
     if (this.canManageTemplates()) {
       this.menuItems.push({
@@ -126,15 +130,9 @@ export class Dashboard implements OnInit {
         icon: 'pi pi-cog',
         items: [
           {
-            label: 'User Management',
+            label: 'CA User Management',
             icon: 'pi pi-users',
-            command: () => {
-              this.messageService.add({
-                severity: 'info',
-                summary: 'Coming Soon',
-                detail: 'User management functionality'
-              });
-            }
+            routerLink: '/app/admin/ca-users'
           },
           {
             label: 'System Settings',
@@ -158,7 +156,7 @@ export class Dashboard implements OnInit {
         next: (certificates) => {
           this.certificateCount = certificates.length;
           this.activeCertificates = certificates.filter(cert => !cert.revoked).length;
-          
+
           // Calculate expiring soon (within 30 days)
           const now = new Date();
           this.expiringSoon = certificates.filter(cert => {

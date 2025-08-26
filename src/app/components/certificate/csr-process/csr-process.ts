@@ -77,8 +77,7 @@ export class CSRProcess implements OnInit {
   isLoading = false;
   
   caCertificates: CertificateListDTO[] = [];
-  availableTemplates: TemplateResponseDTO[] = [];
-  selectedTemplate: TemplateResponseDTO | null = null;
+
   
   csrInfo: any = null;
 
@@ -94,7 +93,6 @@ export class CSRProcess implements OnInit {
 
   ngOnInit() {
     this.loadCACertificates();
-    this.loadTemplates();
   }
 
   initializeForm() {
@@ -114,7 +112,7 @@ export class CSRProcess implements OnInit {
   }
 
   loadCACertificates() {
-    this.certificateService.getAvailableCACertificates().subscribe({
+    this.certificateService.getCertificates().subscribe({
       next: (certificates) => {
         this.caCertificates = certificates;
       },
@@ -128,16 +126,6 @@ export class CSRProcess implements OnInit {
     });
   }
 
-  loadTemplates() {
-    this.certificateService.getTemplates().subscribe({
-      next: (templates) => {
-        this.availableTemplates = templates;
-      },
-      error: (error) => {
-        console.error('Failed to load templates:', error);
-      }
-    });
-  }
 
   onCSRFileSelect(event: any) {
     const file = event.files[0];
@@ -171,34 +159,8 @@ export class CSRProcess implements OnInit {
     }
   }
 
-  onIssuerSelect(issuerId: number) {
-    if (issuerId) {
-      // Filter templates based on selected CA
-      this.availableTemplates = this.availableTemplates.filter(
-        template => template.caIssuerName === this.caCertificates.find(ca => ca.id === issuerId)?.subjectDN
-      );
-    }
-  }
+ 
 
-  onTemplateSelect(templateId: number) {
-    if (templateId) {
-      this.selectedTemplate = this.availableTemplates.find(t => t.id === templateId) || null;
-      
-      if (this.selectedTemplate && this.selectedTemplate.maxTtlDays) {
-        const currentValidity = this.csrForm.get('validityDays')?.value || 365;
-        if (currentValidity > this.selectedTemplate.maxTtlDays) {
-          this.csrForm.get('validityDays')?.setValue(this.selectedTemplate.maxTtlDays);
-          this.messageService.add({
-            severity: 'info',
-            summary: 'Template Applied',
-            detail: `Validity period adjusted to template maximum: ${this.selectedTemplate.maxTtlDays} days`
-          });
-        }
-      }
-    } else {
-      this.selectedTemplate = null;
-    }
-  }
 
   isFieldInvalid(fieldName: string): boolean {
     const field = this.csrForm.get(fieldName);
@@ -246,7 +208,6 @@ export class CSRProcess implements OnInit {
   clearForm() {
     this.csrForm.reset();
     this.csrInfo = null;
-    this.selectedTemplate = null;
     this.initializeForm();
   }
 

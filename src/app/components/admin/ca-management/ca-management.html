@@ -1,0 +1,233 @@
+<!-- src/app/components/admin/ca-management/ca-management.html -->
+<p-toast position="top-center"></p-toast>
+<p-confirmDialog></p-confirmDialog>
+
+<!-- Create CA User Dialog -->
+<p-dialog 
+  [(visible)]="showCreateDialog" 
+  header="Create New CA User"
+  modal="true"
+  styleClass="p-fluid"
+  [style]="{width: '500px'}">
+  
+  <form [formGroup]="createUserForm" (ngSubmit)="createCAUser()">
+    <div class="grid">
+      <div class="col-12">
+        <label for="username" class="block font-medium mb-2">
+          Email Address <span class="text-red-500">*</span>
+        </label>
+        <input 
+          pInputText 
+          id="username"
+          formControlName="username"
+          placeholder="user@organization.com"
+          styleClass="w-full" />
+        <small class="p-error" *ngIf="isFieldInvalid('username')">
+          {{ getFieldErrorMessage('username') }}
+        </small>
+      </div>
+
+      <div class="col-12 md:col-6">
+        <label for="name" class="block font-medium mb-2">
+          Name <span class="text-red-500">*</span>
+        </label>
+        <input 
+          pInputText 
+          id="name"
+          formControlName="name"
+          placeholder="John"
+          styleClass="w-full" />
+        <small class="p-error" *ngIf="isFieldInvalid('name')">
+          {{ getFieldErrorMessage('name') }}
+        </small>
+      </div>
+
+      <div class="col-12 md:col-6">
+        <label for="surname" class="block font-medium mb-2">
+          Surname <span class="text-red-500">*</span>
+        </label>
+        <input 
+          pInputText 
+          id="surname"
+          formControlName="surname"
+          placeholder="Doe"
+          styleClass="w-full" />
+        <small class="p-error" *ngIf="isFieldInvalid('surname')">
+          {{ getFieldErrorMessage('surname') }}
+        </small>
+      </div>
+
+      <div class="col-12">
+        <label for="organization" class="block font-medium mb-2">
+          Organization <span class="text-red-500">*</span>
+        </label>
+        <input 
+          pInputText 
+          id="organization"
+          formControlName="organization"
+          placeholder="Organization Name"
+          styleClass="w-full" />
+        <small class="p-error" *ngIf="isFieldInvalid('organization')">
+          {{ getFieldErrorMessage('organization') }}
+        </small>
+      </div>
+
+      <div class="col-12">
+        <label for="password" class="block font-medium mb-2">
+          Password <span class="text-red-500">*</span>
+        </label>
+        <p-password 
+          id="password"
+          formControlName="password"
+          placeholder="Enter secure password"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          [feedback]="true"
+          [toggleMask]="true">
+        </p-password>
+        <small class="p-error" *ngIf="isFieldInvalid('password')">
+          {{ getFieldErrorMessage('password') }}
+        </small>
+      </div>
+    </div>
+    
+    <div class="flex justify-content-end gap-2 mt-4">
+      <p-button 
+        label="Cancel" 
+        icon="pi pi-times" 
+        [text]="true"
+        (onClick)="showCreateDialog = false">
+      </p-button>
+      <p-button 
+        type="submit"
+        label="Create User" 
+        icon="pi pi-check"
+        [loading]="saving"
+        [disabled]="createUserForm.invalid || saving">
+      </p-button>
+    </div>
+  </form>
+</p-dialog>
+
+<div class="grid">
+  <div class="col-12">
+    <p-card>
+      <ng-template pTemplate="header">
+        <p-toolbar styleClass="mb-4 gap-2">
+          <ng-template pTemplate="left">
+            <div>
+              <h2 class="m-0 mb-1">CA User Management</h2>
+              <p class="m-0 text-color-secondary">
+                Manage Certificate Authority users and issue CA certificates
+              </p>
+            </div>
+          </ng-template>
+          
+          <ng-template pTemplate="right">
+            <p-button 
+              label="Create CA User" 
+              icon="pi pi-plus" 
+              (onClick)="showCreateUserDialog()">
+            </p-button>
+          </ng-template>
+        </p-toolbar>
+      </ng-template>
+
+      <p-table 
+        [value]="caUsers" 
+        [loading]="loading"
+        [globalFilterFields]="['username', 'name', 'surname', 'organization']"
+        [paginator]="true" 
+        [rows]="10"
+        responsiveLayout="scroll"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} CA users"
+        styleClass="p-datatable-striped">
+        
+        <ng-template pTemplate="caption">
+          <div class="flex justify-content-between align-items-center">
+            <h5 class="m-0">CA Users</h5>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input 
+                pInputText 
+                type="text" 
+                placeholder="Search CA users..." 
+                #dt />
+            </span>
+          </div>
+        </ng-template>
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="name">User <p-sortIcon field="name"></p-sortIcon></th>
+            <th pSortableColumn="username">Email <p-sortIcon field="username"></p-sortIcon></th>
+            <th pSortableColumn="organization">Organization <p-sortIcon field="organization"></p-sortIcon></th>
+            <th pSortableColumn="certificateCount">Certificates <p-sortIcon field="certificateCount"></p-sortIcon></th>
+            <th pSortableColumn="active">Status <p-sortIcon field="active"></p-sortIcon></th>
+            <th pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+            <th>Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-user>
+          <tr>
+            <td>
+              <div class="font-medium">{{user.name}} {{user.surname}}</div>
+              <div class="text-sm text-color-secondary">ID: {{user.id}}</div>
+            </td>
+            <td>{{user.username}}</td>
+            <td>{{user.organization}}</td>
+            <td>
+              <p-tag 
+                [value]="user.certificateCount.toString()" 
+                [severity]="user.certificateCount > 0 ? 'info' : 'secondary'">
+              </p-tag>
+            </td>
+            <td>
+              <p-tag 
+                [value]="user.active ? 'Active' : 'Inactive'" 
+                [severity]="user.active ? 'success' : 'danger'">
+              </p-tag>
+            </td>
+            <td>{{user.createdAt | date:'shortDate'}}</td>
+            <td>
+              <div class="flex gap-1">
+                <p-button 
+                  icon="pi pi-eye" 
+                  size="small" 
+                  [text]="true"
+                  pTooltip="View Details"
+                  (onClick)="viewCAUser(user)">
+                </p-button>
+                
+                <p-button 
+                  icon="pi pi-key" 
+                  size="small" 
+                  [text]="true"
+                  severity="secondary"
+                  pTooltip="Issue Certificate"
+                  (onClick)="issueCertificate(user)">
+                </p-button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center p-4">
+              <div class="text-color-secondary">
+                <i class="pi pi-users text-6xl mb-3"></i>
+                <div>No CA users found.</div>
+                <div class="mt-2">
+                  <p-button label="Create First CA User" (onClick)="showCreateUserDialog()"></p-button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-card>
+  </div>
+</div>
