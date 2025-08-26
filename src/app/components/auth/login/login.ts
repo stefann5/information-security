@@ -114,22 +114,7 @@ export class Login implements OnInit, OnDestroy {
       });
   }
 
-  test(){
-    this.authService.test()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          this.isLoading = false;
-        },
-        error: (error) => {
-          this.handleLoginError(error);
-          this.isLoading = false;
-        },
-        complete: () => {
-          this.isLoading = false;
-        }
-      });
-  }
+  
 
   private handleLoginError(error: any): void {
     let errorMessage = 'Login failed. Please try again.';
