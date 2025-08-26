@@ -1,0 +1,309 @@
+<p-toast position="top-center"></p-toast>
+
+    <div class="grid">
+      <div class="col-12">
+        <p-card>
+          <ng-template pTemplate="header">
+            <div class="p-4 border-bottom-1 surface-border">
+              <h2 class="m-0">Issue New Certificate</h2>
+              <p class="m-0 text-color-secondary">Create a new digital certificate</p>
+            </div>
+          </ng-template>
+
+          <form [formGroup]="certificateForm" (ngSubmit)="onSubmit()">
+            <p-tabs>
+              <!-- Basic Information Tab -->
+              <p-tabpanel header="Basic Information" leftIcon="pi pi-user">
+                <div class="grid p-4">
+                  <div class="col-12 md:col-6">
+                    <label for="certificateType" class="block font-medium mb-2">
+                      Certificate Type <span class="text-red-500">*</span>
+                    </label>
+                    <p-select 
+                      id="certificateType"
+                      formControlName="certificateType"
+                      [options]="certificateTypes"
+                      placeholder="Select certificate type"
+                      optionLabel="label"
+                      optionValue="value"
+                      styleClass="w-full">
+                    </p-select>
+                    <small class="p-error" *ngIf="isFieldInvalid('certificateType')">
+                      Certificate type is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6" *ngIf="showIssuerSelection()">
+                    <label for="issuerCertificateId" class="block font-medium mb-2">
+                      Issuer CA Certificate <span class="text-red-500">*</span>
+                    </label>
+                    <p-select 
+                      id="issuerCertificateId"
+                      formControlName="issuerCertificateId"
+                      [options]="caCertificates"
+                      placeholder="Select issuer CA"
+                      optionLabel="commonName"
+                      optionValue="id"
+                      styleClass="w-full">
+                    </p-select>
+                    <small class="p-error" *ngIf="isFieldInvalid('issuerCertificateId')">
+                      Issuer certificate is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6" *ngIf="templates.length > 0">
+                    <label for="templateId" class="block font-medium mb-2">Template (Optional)</label>
+                    <p-select 
+                      id="templateId"
+                      formControlName="templateId"
+                      [options]="templates"
+                      placeholder="Select template"
+                      optionLabel="templateName"
+                      optionValue="id"
+                      styleClass="w-full"
+                      (onChange)="onTemplateSelect($event.value)">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12">
+                    <h4>Subject Information</h4>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="commonName" class="block font-medium mb-2">
+                      Common Name (CN) <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                      pInputText 
+                      id="commonName"
+                      formControlName="commonName"
+                      placeholder="example.com or John Doe"
+                      styleClass="w-full" />
+                    <small class="p-error" *ngIf="isFieldInvalid('commonName')">
+                      Common name is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationName" class="block font-medium mb-2">Organization (O)</label>
+                    <input 
+                      pInputText 
+                      id="organizationName"
+                      formControlName="organizationName"
+                      placeholder="Organization Name"
+                      styleClass="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationalUnit" class="block font-medium mb-2">Organizational Unit (OU)</label>
+                    <input 
+                      pInputText 
+                      id="organizationalUnit"
+                      formControlName="organizationalUnit"
+                      placeholder="IT Department"
+                      styleClass="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="countryCode" class="block font-medium mb-2">Country Code (C)</label>
+                    <input 
+                      pInputText 
+                      id="countryCode"
+                      formControlName="countryCode"
+                      placeholder="RS"
+                      maxlength="2"
+                      styleClass="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="emailAddress" class="block font-medium mb-2">Email Address</label>
+                    <input 
+                      pInputText 
+                      id="emailAddress"
+                      formControlName="emailAddress"
+                      type="email"
+                      placeholder="admin@example.com"
+                      styleClass="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="locality" class="block font-medium mb-2">Locality/City (L)</label>
+                    <input 
+                      pInputText 
+                      id="locality"
+                      formControlName="locality"
+                      placeholder="Belgrade"
+                      styleClass="w-full" />
+                  </div>
+
+                  <div class="col-12">
+                    <label for="subjectAlternativeNames" class="block font-medium mb-2">
+                      Subject Alternative Names (SAN)
+                    </label>
+                    <input 
+                      pInputText
+                      id="subjectAlternativeNames"
+                      formControlName="subjectAlternativeNames"
+                      placeholder="Enter SANs separated by commas (e.g., *.example.com, mail.example.com, www.example.com)"
+                      styleClass="w-full" />
+                    <small class="text-color-secondary">Enter multiple SANs separated by commas</small>
+                  </div>
+                </div>
+              </p-tabpanel>
+
+              <!-- Validity & Security Tab -->
+              <p-tabpanel header="Validity & Security" leftIcon="pi pi-shield">
+                <div class="grid p-4">
+                  <div class="col-12">
+                    <h4>Certificate Validity</h4>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validFrom" class="block font-medium mb-2">
+                      Valid From <span class="text-red-500">*</span>
+                    </label>
+                    <p-date-picker 
+                      id="validFrom"
+                      formControlName="validFrom"
+                      [showTime]="true"
+                      dateFormat="dd.mm.yy"
+                      styleClass="w-full">
+                    </p-date-picker>
+                    <small class="p-error" *ngIf="isFieldInvalid('validFrom')">
+                      Valid from date is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validTo" class="block font-medium mb-2">
+                      Valid To <span class="text-red-500">*</span>
+                    </label>
+                    <p-date-picker 
+                      id="validTo"
+                      formControlName="validTo"
+                      [showTime]="true"
+                      dateFormat="dd.mm.yy"
+                      styleClass="w-full">
+                    </p-date-picker>
+                    <small class="p-error" *ngIf="isFieldInvalid('validTo')">
+                      Valid to date is required
+                    </small>
+                  </div>
+
+                  <div class="col-12">
+                    <h4>Key Parameters</h4>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="algorithm" class="block font-medium mb-2">Algorithm</label>
+                    <p-select 
+                      id="algorithm"
+                      formControlName="algorithm"
+                      [options]="algorithms"
+                      optionLabel="label"
+                      optionValue="value"
+                      styleClass="w-full">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keySize" class="block font-medium mb-2">Key Size</label>
+                    <p-select 
+                      id="keySize"
+                      formControlName="keySize"
+                      [options]="keySizes"
+                      optionLabel="label"
+                      optionValue="value"
+                      styleClass="w-full">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12">
+                    <h4>Certificate Extensions</h4>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keyUsage" class="block font-medium mb-2">Key Usage</label>
+                    <p-multiSelect 
+                      id="keyUsage"
+                      formControlName="keyUsage"
+                      [options]="keyUsageOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select key usage"
+                      styleClass="w-full">
+                    </p-multiSelect>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="extendedKeyUsage" class="block font-medium mb-2">Extended Key Usage</label>
+                    <p-multiSelect 
+                      id="extendedKeyUsage"
+                      formControlName="extendedKeyUsage"
+                      [options]="extendedKeyUsageOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select extended key usage"
+                      styleClass="w-full">
+                    </p-multiSelect>
+                  </div>
+
+                  <div class="col-12" *ngIf="isCACertificate()">
+                    <h4>CA Settings</h4>
+                    
+                    <div class="flex align-items-center mb-3">
+                      <p-checkbox 
+                        id="isCA" 
+                        formControlName="isCA" 
+                        binary="true">
+                      </p-checkbox>
+                      <label for="isCA" class="ml-2">This is a CA certificate</label>
+                    </div>
+
+                    <div class="field" *ngIf="certificateForm.get('isCA')?.value">
+                      <label for="pathLenConstraint" class="block font-medium mb-2">Path Length Constraint</label>
+                      <p-inputNumber 
+                        id="pathLenConstraint"
+                        formControlName="pathLenConstraint"
+                        [min]="0"
+                        [max]="10"
+                        placeholder="Leave empty for unlimited"
+                        styleClass="w-full">
+                      </p-inputNumber>
+                    </div>
+                  </div>
+                </div>
+              </p-tabpanel>
+            </p-tabs>
+
+            <div class="flex justify-content-between align-items-center mt-4 p-4 border-top-1 surface-border">
+              <p-button 
+                label="Back to Certificates" 
+                icon="pi pi-arrow-left" 
+                severity="secondary"
+                [text]="true"
+                (onClick)="goBack()">
+              </p-button>
+              
+              <div class="flex gap-2">
+                <p-button 
+                  label="Reset Form" 
+                  icon="pi pi-refresh" 
+                  severity="secondary"
+                  [text]="true"
+                  (onClick)="resetForm()">
+                </p-button>
+                
+                <p-button 
+                  type="submit"
+                  label="Issue Certificate" 
+                  icon="pi pi-check" 
+                  [loading]="isLoading"
+                  [disabled]="certificateForm.invalid || isLoading">
+                </p-button>
+              </div>
+            </div>
+          </form>
+        </p-card>
+      </div>
+    </div>
