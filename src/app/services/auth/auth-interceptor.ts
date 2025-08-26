@@ -28,7 +28,8 @@ export class AuthInterceptor implements HttpInterceptor {
   private readonly excludedUrls = [
     '/auth/login',
     '/auth/register',
-    '/auth/refresh_token'
+    '/auth/refresh_token',
+    'https://api.pwnedpasswords.com/range/'
   ];
 
   constructor(private authService: AuthService) {}
