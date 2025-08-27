@@ -70,7 +70,12 @@
               "buildTarget": "information-security:build:production"
             },
             "development": {
-              "buildTarget": "information-security:build:development"
+              "buildTarget": "information-security:build:development",
+              "ssl": true,
+              "sslCert": "angular-cert.pem",
+              "sslKey": "angular-key.pem",
+              "host": "localhost",
+              "port": 4200
             }
           },
           "defaultConfiguration": "development"
