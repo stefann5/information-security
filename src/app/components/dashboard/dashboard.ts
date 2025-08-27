@@ -96,12 +96,14 @@ export class Dashboard implements OnInit {
         routerLink: '/app/certificates'
       }
     ];
-    
-    this.menuItems.push({
-      label: 'Process CSR',
-      icon: 'pi pi-upload',
-      routerLink: '/app/certificates/csr'
-    });
+
+    if (this.csrAvailable()) {
+      this.menuItems.push({
+        label: 'Process CSR',
+        icon: 'pi pi-upload',
+        routerLink: '/app/certificates/csr'
+      });
+    }
 
     // Add role-specific menu items
     if (this.canIssue()) {
@@ -191,6 +193,10 @@ export class Dashboard implements OnInit {
 
   canIssue(): boolean {
     return this.authService.IsAdmin() || this.authService.IsCA();
+  }
+
+  csrAvailable():boolean{
+    return !this.authService.IsCA();
   }
 
   canManageTemplates(): boolean {

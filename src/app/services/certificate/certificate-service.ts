@@ -44,6 +44,13 @@ export class CertificateService {
   }
 
   /**
+   * Get all certificates not revoked
+   */
+  getAllCertificates(): Observable<CertificateListDTO[]> {
+    return this.http.get<CertificateListDTO[]>(`${this.baseUrl}/all`);
+  }
+
+  /**
    * Get specific certificate details
    */
   getCertificate(id: number): Observable<CertificateResponseDTO> {

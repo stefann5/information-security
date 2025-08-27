@@ -68,7 +68,7 @@ import { CertificateService } from '../../../services/certificate/certificate-se
 export class CertificateIssue implements OnInit {
   certificateForm!: FormGroup;
   isLoading = false;
-  
+
   caCertificates: CertificateListDTO[] = [];
   templates: TemplateResponseDTO[] = [];
 
@@ -158,7 +158,7 @@ export class CertificateIssue implements OnInit {
 
   updateFormValidators(type: string) {
     const issuerControl = this.certificateForm.get('issuerCertificateId');
-    
+
     if (type === 'ROOT_CA') {
       issuerControl?.clearValidators();
       this.certificateForm.get('isCA')?.setValue(true);
@@ -166,7 +166,7 @@ export class CertificateIssue implements OnInit {
       issuerControl?.setValidators([Validators.required]);
       this.certificateForm.get('isCA')?.setValue(type === 'INTERMEDIATE_CA');
     }
-    
+
     issuerControl?.updateValueAndValidity();
   }
 
@@ -246,11 +246,11 @@ export class CertificateIssue implements OnInit {
     if (this.certificateForm.valid) {
       this.isLoading = true;
       const formValue = this.certificateForm.value;
-      
+
       // Convert comma-separated SAN string to array
       const sanString = formValue.subjectAlternativeNames;
-      const sanArray = sanString ? 
-        sanString.split(',').map((san: string) => san.trim()).filter((san: string) => san.length > 0) : 
+      const sanArray = sanString ?
+        sanString.split(',').map((san: string) => san.trim()).filter((san: string) => san.length > 0) :
         [];
 
       const request: CertificateRequestDTO = {
@@ -268,10 +268,26 @@ export class CertificateIssue implements OnInit {
           this.router.navigate(['/certificates', response.id]);
         },
         error: (error) => {
+          // Create the response object in the desired format
+          const certificateResponse = {
+            id: error.error?.id || null,
+            serialNumber: error.error?.serialNumber || null,
+            subjectDN: error.error?.subjectDN || null,
+            issuerDN: error.error?.issuerDN || null,
+            certificateType: error.error?.certificateType || null,
+            validFrom: error.error?.validFrom || null,
+            validTo: error.error?.validTo || null,
+            revoked: error.error?.revoked || false,
+            revocationDate: error.error?.revocationDate || null,
+            revocationReason: error.error?.revocationReason || null,
+            certificateData: error.error?.certificateData || error.error?.message || 'Failed to issue certificate',
+            hasPrivateKey: error.error?.hasPrivateKey || false
+          };
+
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: error.error?.message || 'Failed to issue certificate'
+            detail: JSON.stringify(certificateResponse.certificateData, null, 2)
           });
           this.isLoading = false;
         }
