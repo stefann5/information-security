@@ -112,7 +112,7 @@ export class CSRProcess implements OnInit {
   }
 
   loadCACertificates() {
-    this.certificateService.getCertificates().subscribe({
+    this.certificateService.getAllCertificates().subscribe({
       next: (certificates) => {
         this.caCertificates = certificates;
       },

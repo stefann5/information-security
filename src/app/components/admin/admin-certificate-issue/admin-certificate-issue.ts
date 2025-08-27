@@ -69,10 +69,11 @@ import { CertificateListDTO } from '../../../dto/certificate/certificate-dtos';
 export class AdminCertificateIssue implements OnInit {
   certificateForm!: FormGroup;
   isLoading = false;
-  
+
   caUsers: CAUserResponseDTO[] = [];
   caCertificates: CertificateListDTO[] = [];
   selectedCAUser: CAUserResponseDTO | null = null;
+  selectedCAUserId: number | null = null;
 
   certificateTypes = [
     { label: 'Root CA', value: 'ROOT_CA' },
@@ -122,11 +123,15 @@ export class AdminCertificateIssue implements OnInit {
   ngOnInit() {
     this.loadCAUsers();
     this.loadCACertificates();
-    
+
     // Check if CA user ID is provided in query params
     this.route.queryParams.subscribe(params => {
       if (params['caUserId']) {
-        this.preSelectCAUser(+params['caUserId']);
+        this.selectedCAUserId = +params['caUserId'];
+        // Try to preselect if users are already loaded
+        if (this.caUsers.length > 0) {
+          this.preSelectCAUser(this.selectedCAUserId);
+        }
       }
     });
   }
@@ -167,7 +172,7 @@ export class AdminCertificateIssue implements OnInit {
 
   updateFormValidators(type: string) {
     const issuerControl = this.certificateForm.get('issuerCertificateId');
-    
+
     if (type === 'ROOT_CA') {
       issuerControl?.clearValidators();
       this.certificateForm.get('isCA')?.setValue(true);
@@ -175,7 +180,7 @@ export class AdminCertificateIssue implements OnInit {
       issuerControl?.setValidators([Validators.required]);
       this.certificateForm.get('isCA')?.setValue(true);
     }
-    
+
     issuerControl?.updateValueAndValidity();
   }
 
@@ -183,6 +188,11 @@ export class AdminCertificateIssue implements OnInit {
     this.adminService.getCAUsers().subscribe({
       next: (users) => {
         this.caUsers = users;
+        // Apply pending selection if exists
+        if (this.selectedCAUserId) {
+          this.preSelectCAUser(this.selectedCAUserId);
+          this.selectedCAUserId = null; // Clear after use
+        }
       },
       error: (error) => {
         this.messageService.add({
@@ -215,7 +225,7 @@ export class AdminCertificateIssue implements OnInit {
     if (user) {
       this.selectedCAUser = user;
       this.certificateForm.get('caUserId')?.setValue(userId);
-      
+
       // Auto-populate organization info
       this.certificateForm.patchValue({
         organizationName: user.organization
@@ -246,11 +256,11 @@ export class AdminCertificateIssue implements OnInit {
     if (this.certificateForm.valid) {
       this.isLoading = true;
       const formValue = this.certificateForm.value;
-      
+
       // Convert comma-separated SAN string to array
       const sanString = formValue.subjectAlternativeNames;
-      const sanArray = sanString ? 
-        sanString.split(',').map((san: string) => san.trim()).filter((san: string) => san.length > 0) : 
+      const sanArray = sanString ?
+        sanString.split(',').map((san: string) => san.trim()).filter((san: string) => san.length > 0) :
         [];
 
       const request: AdminCertificateRequestDTO = {
