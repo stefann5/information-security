@@ -9,7 +9,7 @@ import {
   ValidationErrors,
 } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { map, Subject, takeUntil } from 'rxjs';
+import { map, Subject, takeUntil, tap } from 'rxjs';
 
 // PrimeNG Standalone Imports
 import { CardModule } from 'primeng/card';
@@ -64,7 +64,7 @@ export class Register implements OnInit, OnDestroy {
   maxDate = new Date();
   minDate = new Date(1);
 
-  passwordStrength: 'weak' | 'medium' | 'strong' | null = null;
+  passwordStrength: 'weak' | 'medium' | 'strong' | 'pwned' | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -156,7 +156,13 @@ export class Register implements OnInit, OnDestroy {
 
       return service
         .checkPwned(control.value)
-        .pipe(map((found) => (found ? { pwnedPassword: true } : null)));
+        .pipe(
+          tap((result) => {
+            if(result){
+              this.passwordStrength = 'pwned'
+            }
+          }) 
+        );
     };
   }
 
@@ -192,7 +198,17 @@ export class Register implements OnInit, OnDestroy {
   }
 
   private performRegistration(): void {
-    this.isLoading = true;
+    if (this.isLoading) {
+      this.registerForm.get('name')?.disable();
+      this.registerForm.get('surname')?.disable();
+      this.registerForm.get('password')?.disable();
+      this.registerForm.get('confirmPassword')?.disable();
+    } else {
+      this.registerForm.get('name')?.enable();
+      this.registerForm.get('surname')?.enable();
+      this.registerForm.get('password')?.enable();
+      this.registerForm.get('confirmPassword')?.enable();
+    }
     this.messageService.clear();
 
     const formValue = this.registerForm.value;
@@ -217,6 +233,7 @@ export class Register implements OnInit, OnDestroy {
             life: 5000,
           });
           this.isLoading = false;
+          this.router.navigate([''])
         },
         error: (error) => {
           this.isLoading = false;
