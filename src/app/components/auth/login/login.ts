@@ -120,10 +120,10 @@ export class Login implements OnInit, OnDestroy {
     let errorMessage = 'Login failed. Please try again.';
     let errorDetail = '';
 
+    console.log(error)
     switch (error.status) {
       case 401:
-        errorMessage = 'Invalid Credentials';
-        errorDetail = 'The username or password you entered is incorrect.';
+        errorMessage = error.error.message
         break;
       case 400:
         errorMessage = 'Invalid Request';

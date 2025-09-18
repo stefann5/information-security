@@ -7,7 +7,7 @@
     <!-- Brand Section -->
     <div class="text-center mb-4">
       <i class="pi pi-music-note text-6xl mb-3 block"></i>
-      <h1 class="text-4xl font-bold m-0 mb-2">Join Mixly</h1>
+      <h1 class="text-4xl font-bold m-0 mb-2">Join Securely</h1>
       <p class="text-lg m-0">Create your account to get started</p>
     </div>
 
@@ -35,7 +35,6 @@
                     placeholder="Enter your name"
                     class="w-full"
                     [class.p-invalid]="isNameInvalid"
-                    [disabled]="isLoading"
                   />
                 </span>
                 <small class="p-error block mt-1" *ngIf="isNameInvalid">
@@ -58,7 +57,6 @@
                     placeholder="Enter your surname"
                     class="w-full"
                     [class.p-invalid]="isSurnameInvalid"
-                    [disabled]="isLoading"
                   />
                 </span>
                 <small class="p-error block mt-1" *ngIf="isSurnameInvalid">
@@ -81,7 +79,6 @@
                 placeholder="Enter your organization"
                 class="w-full"
                 [class.p-invalid]="isOrganizationInvalid"
-                [disabled]="isLoading"
               />
             </span>
             <small class="p-error block mt-1" *ngIf="isOrganizationInvalid">
@@ -106,7 +103,6 @@
                 placeholder="Enter your email address"
                 class="w-full"
                 [class.p-invalid]="isUsernameInvalid"
-                [disabled]="isLoading"
               />
             </span>
             <small class="p-error block mt-1" *ngIf="isUsernameInvalid">
@@ -130,7 +126,6 @@
                   inputStyleClass="w-full"
                   (input)="onPasswordInput($event)"
                   [class.p-invalid]="isPasswordInvalid"
-                  [disabled]="isLoading"
                   [feedback]="true"
                   [toggleMask]="true"
                 ></p-password>
@@ -145,6 +140,12 @@
                     class="p-error block"
                   >
                     ⚠️ Weak
+                  </small>
+                   <small
+                    *ngIf="passwordStrength === 'pwned'"
+                    class="p-error block"
+                  >
+                    ⚠️ Pwned
                   </small>
                   <small
                     *ngIf="passwordStrength === 'medium'"
@@ -175,7 +176,6 @@
                   styleClass="w-full"
                   inputStyleClass="w-full"
                   [class.p-invalid]="isConfirmPasswordInvalid"
-                  [disabled]="isLoading"
                   [feedback]="false"
                   [toggleMask]="true"
                 ></p-password>
