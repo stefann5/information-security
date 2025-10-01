@@ -112,17 +112,21 @@ export class Dashboard implements OnInit {
         icon: 'pi pi-plus',
         routerLink: '/app/certificates/issue'
       });
-
-
     }
-
-
 
     if (this.canManageTemplates()) {
       this.menuItems.push({
         label: 'Templates',
         icon: 'pi pi-bookmark',
         routerLink: '/app/certificates/templates'
+      });
+    }
+
+    if(this.authService.IsAdmin() || this.authService.IsCA()) {
+      this.menuItems.push({
+        label: 'Validation',
+        icon: 'pi pi-shield',
+        routerLink: '/app/validation'
       });
     }
 

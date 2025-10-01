@@ -1,0 +1,280 @@
+<p-toast position="top-center"></p-toast>
+
+<div class="validation-container">
+  <p-card>
+    <ng-template pTemplate="header">
+      <div class="p-3">
+        <h2 class="m-0">
+          <i class="pi pi-shield mr-2"></i>
+          Certificate Validation
+        </h2>
+      </div>
+    </ng-template>
+
+    <!-- Navigation Buttons -->
+    <div class="flex gap-2 mb-4">
+      <p-button 
+        label="OCSP Status Check"
+        icon="pi pi-check-circle"
+        [outlined]="activeSection !== 'ocsp'"
+        (onClick)="activeSection = 'ocsp'">
+      </p-button>
+      <p-button 
+        label="CRL Management"
+        icon="pi pi-download"
+        [outlined]="activeSection !== 'crl'"
+        (onClick)="activeSection = 'crl'">
+      </p-button>
+      <p-button 
+        label="Certificate Validation"
+        icon="pi pi-upload"
+        [outlined]="activeSection !== 'upload'"
+        (onClick)="activeSection = 'upload'">
+      </p-button>
+    </div>
+
+    <p-divider></p-divider>
+
+    <!-- OCSP Status Check Section -->
+    <div *ngIf="activeSection === 'ocsp'" class="p-fluid">
+      <p-message 
+        severity="info" 
+        text="Check the real-time status of a certificate using OCSP (Online Certificate Status Protocol)">
+      </p-message>
+
+      <div class="field mt-4">
+        <label for="serialNumber">Certificate Serial Number</label>
+        <input 
+          pInputText 
+          id="serialNumber" 
+          [(ngModel)]="ocspSerialNumber"
+          placeholder="Enter certificate serial number"
+          [disabled]="ocspLoading" />
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <p-button 
+          label="Check Status"
+          icon="pi pi-search"
+          (onClick)="checkOCSPStatus()"
+          [loading]="ocspLoading"
+          [disabled]="!ocspSerialNumber">
+        </p-button>
+        <p-button 
+          label="Clear"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="clearOCSPCheck()"
+          [disabled]="ocspLoading">
+        </p-button>
+      </div>
+
+      <!-- OCSP Result Display -->
+      <div *ngIf="ocspStatus" class="mt-4">
+        <p-divider></p-divider>
+        <h3>Status Result</h3>
+        
+        <div class="flex align-items-center gap-3 mt-3">
+          <span class="font-semibold">Certificate Status:</span>
+          <p-tag 
+            [value]="ocspStatus" 
+            [severity]="getOCSPStatusSeverity()"
+            [icon]="ocspStatus === 'GOOD' ? 'pi pi-check' : 
+                    ocspStatus === 'REVOKED' ? 'pi pi-times' : 'pi pi-question'">
+          </p-tag>
+        </div>
+
+        <div class="mt-3">
+          <p-message 
+            *ngIf="ocspStatus === 'GOOD'"
+            severity="success" 
+            text="Certificate is valid and not revoked">
+          </p-message>
+          <p-message 
+            *ngIf="ocspStatus === 'REVOKED'"
+            severity="error" 
+            text="Certificate has been revoked and should not be trusted">
+          </p-message>
+          <p-message 
+            *ngIf="ocspStatus === 'UNKNOWN'"
+            severity="warn" 
+            text="Certificate status is unknown - cannot verify">
+          </p-message>
+          <p-message 
+            *ngIf="ocspStatus === 'ERROR'"
+            severity="error" 
+            text="Error occurred while checking certificate status">
+          </p-message>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRL Management Section -->
+    <div *ngIf="activeSection === 'crl'" class="p-fluid">
+      <p-message 
+        severity="info" 
+        text="Download Certificate Revocation List (CRL) for a Certificate Authority">
+      </p-message>
+
+      <div class="field mt-4">
+        <label for="caSelect">Select Certificate Authority</label>
+        <p-select
+          id="caSelect"
+          [options]="caCertificates"
+          [(ngModel)]="selectedCA"
+          optionLabel="commonName"
+          placeholder="Select a CA certificate"
+          [disabled]="crlLoading || crlDownloadLoading"
+          [style]="{'width': '100%'}">
+          <ng-template let-ca pTemplate="item">
+            <div>
+              <div class="font-semibold">{{ca.commonName}}</div>
+              <div class="text-sm" style="color: var(--text-color-secondary)">
+                {{ca.certificateType}} - Serial: {{ca.serialNumber}}
+              </div>
+            </div>
+          </ng-template>
+        </p-select>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <p-button 
+          label="View CRL"
+          icon="pi pi-eye"
+          (onClick)="viewCRL()"
+          [loading]="crlLoading"
+          [disabled]="!selectedCA">
+        </p-button>
+        <p-button 
+          label="Download CRL"
+          icon="pi pi-download"
+          severity="secondary"
+          (onClick)="downloadCRL()"
+          [loading]="crlDownloadLoading"
+          [disabled]="!selectedCA">
+        </p-button>
+        <p-button 
+          label="Clear"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="clearCRLView()"
+          [disabled]="crlLoading || crlDownloadLoading">
+        </p-button>
+      </div>
+
+      <!-- CRL Content Display -->
+      <div *ngIf="crlPemContent" class="mt-4">
+        <p-divider></p-divider>
+        <h3>CRL Content (PEM Format)</h3>
+        
+        <div class="field mt-3">
+          <textarea 
+            pInputTextarea 
+            [value]="crlPemContent"
+            [rows]="15"
+            readonly
+            style="width: 100%; font-family: monospace; font-size: 0.875rem;">
+          </textarea>
+        </div>
+
+        <p-message 
+          severity="success" 
+          text="CRL loaded successfully. This list contains all revoked certificates for the selected CA">
+        </p-message>
+      </div>
+
+      <div *ngIf="crlLoading" class="flex justify-content-center mt-4">
+        <p-progressSpinner 
+          [style]="{width: '50px', height: '50px'}"
+          strokeWidth="4">
+        </p-progressSpinner>
+      </div>
+    </div>
+
+    <!-- Certificate Upload & Validation Section -->
+    <div *ngIf="activeSection === 'upload'" class="p-fluid">
+      <p-message 
+        severity="info" 
+        text="Upload or paste a certificate in PEM format to validate its structure">
+      </p-message>
+
+      <div class="field mt-4">
+        <label for="certUpload">Upload Certificate File</label>
+        <input 
+          type="file" 
+          id="certUpload"
+          accept=".pem,.crt,.cer"
+          (change)="onCertificateFileChange($event)"
+          class="p-inputtext"
+          [disabled]="validationLoading" />
+      </div>
+
+      <div class="field mt-3">
+        <label for="certPaste">Or Paste Certificate Content</label>
+        <textarea 
+          pInputTextarea 
+          id="certPaste"
+          [(ngModel)]="uploadedCertificate"
+          placeholder="Paste certificate content here (PEM format)&#10;-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+          [rows]="10"
+          [disabled]="validationLoading"
+          style="font-family: monospace; font-size: 0.875rem;">
+        </textarea>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <p-button 
+          label="Validate Certificate"
+          icon="pi pi-verified"
+          (onClick)="validateUploadedCertificate()"
+          [loading]="validationLoading"
+          [disabled]="!uploadedCertificate">
+        </p-button>
+        <p-button 
+          label="Clear"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="clearCertificateValidation()"
+          [disabled]="validationLoading">
+        </p-button>
+      </div>
+
+      <!-- Validation Result Display -->
+      <div *ngIf="validationResult" class="mt-4">
+        <p-divider></p-divider>
+        <h3>Validation Result</h3>
+        
+        <div class="flex align-items-center gap-3 mt-3">
+          <span class="font-semibold">Certificate Status:</span>
+          <p-tag 
+            [value]="validationResult.valid ? 'VALID' : 'INVALID'" 
+            [severity]="validationResult.valid ? 'success' : 'danger'"
+            [icon]="validationResult.valid ? 'pi pi-check' : 'pi pi-times'">
+          </p-tag>
+        </div>
+
+        <div class="mt-3">
+          <p-message 
+            [severity]="validationResult.valid ? 'success' : 'error'" 
+            [text]="validationResult.message">
+          </p-message>
+        </div>
+
+        <div class="mt-3 p-3" style="background: var(--surface-card); border-radius: 6px;">
+          <div class="font-semibold mb-2">Details:</div>
+          <div style="color: var(--text-color-secondary)">{{validationResult.details}}</div>
+        </div>
+      </div>
+
+      <div *ngIf="validationLoading" class="flex justify-content-center mt-4">
+        <p-progressSpinner 
+          [style]="{width: '50px', height: '50px'}"
+          strokeWidth="4">
+        </p-progressSpinner>
+      </div>
+    </div>
+  </p-card>
+</div>

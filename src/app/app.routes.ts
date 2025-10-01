@@ -40,6 +40,7 @@ import { CertificateDetails } from './components/certificate/certificate-details
 import { CertificateTemplates } from './components/certificate/certificate-template/certificate-template';
 import { CAManagement } from './components/admin/ca-management/ca-management';
 import { AdminCertificateIssue } from './components/admin/admin-certificate-issue/admin-certificate-issue';
+import { CertificateValidation } from './components/certificate/certificate-validation/certificate-validation';
 
 export const routes: Routes = [
     // Public routes
@@ -68,6 +69,14 @@ export const routes: Routes = [
             {
                 path: 'certificates/templates',
                 component: CertificateTemplates
+            },
+            {
+                path: 'validation',
+                component: CertificateValidation
+            },
+            {
+                path: 'crl',
+                component: CAManagement
             },
             {
                 path: 'certificates/:id',
