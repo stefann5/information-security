@@ -1,59 +1,44 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
 
 // PrimeNG imports
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
-import { FileUploadModule } from 'primeng/fileupload';
-import { DividerModule } from 'primeng/divider';
 import { MessageModule } from 'primeng/message';
 import { TabsModule } from 'primeng/tabs';
-import { TextareaModule } from 'primeng/textarea';
 import { DatePickerModule } from 'primeng/datepicker';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { PasswordModule } from 'primeng/password';
-import { SelectButtonModule } from 'primeng/selectbutton';
 
 import { MessageService } from 'primeng/api';
 import { CertificateService } from '../../../services/certificate/certificate-service';
-import { CertificateListDTO, CSRRequestDTO, AutoGenerateCertificateDTO } from '../../../dto/certificate/certificate-dtos';
+import { CertificateListDTO, AutoGenerateCertificateDTO } from '../../../dto/certificate/certificate-dtos';
 
 @Component({
-  selector: 'app-csr-process',
+  selector: 'app-certificate-autogenerate',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     CardModule,
     ButtonModule,
     InputTextModule,
-    InputNumberModule,
     SelectModule,
     ToastModule,
-    FileUploadModule,
-    DividerModule,
     MessageModule,
     TabsModule,
-    TextareaModule,
     DatePickerModule,
     MultiSelectModule,
-    PasswordModule,
-    SelectButtonModule
+    PasswordModule
   ],
   providers: [MessageService],
-  templateUrl: "./csr-process.html",
+  templateUrl: './certificate-autogenerate.html',
   styles: [`
-    :host ::ng-deep .p-selectbutton .p-button {
-      padding: 1rem 2rem;
-    }
-    
     :host ::ng-deep .p-password {
       width: 100%;
     }
@@ -74,30 +59,16 @@ import { CertificateListDTO, CSRRequestDTO, AutoGenerateCertificateDTO } from '.
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--surface-border);
     }
-    
-    .font-mono {
-      font-family: 'Courier New', monospace;
-    }
   `]
 })
-export class CSRProcess implements OnInit {
-  // Mode selection
-  selectedMode: 'upload' | 'autogen' = 'upload';
-  requestModes = [
-    { label: 'Upload CSR', value: 'upload', icon: 'pi pi-upload' },
-    { label: 'Auto-Generate', value: 'autogen', icon: 'pi pi-bolt' }
-  ];
-
-  // Forms
-  csrForm!: FormGroup;
+export class CertificateAutogenerateComponent implements OnInit {
   autogenForm!: FormGroup;
   isLoading = false;
   
-  // Data
   caCertificates: CertificateListDTO[] = [];
   maxValidTo?: Date;
+  minValidTo?: Date;
   
-  // Auto-generate options
   algorithms = [
     { label: 'RSA', value: 'RSA' },
     { label: 'EC (Elliptic Curve)', value: 'EC' }
@@ -134,100 +105,29 @@ export class CSRProcess implements OnInit {
     private certificateService: CertificateService,
     private messageService: MessageService,
     private router: Router
-  ) {}
+  ) {
+    this.initializeForm();
+  }
 
   ngOnInit() {
-    this.initializeCSRForm();
-    this.initializeAutoGenForm();
     this.loadCACertificates();
-    this.onAlgorithmChange();
+    this.onAlgorithmChange(); // Set initial key sizes
   }
 
-  // ========== CSR Upload Form ==========
-  
-  initializeCSRForm() {
-    this.csrForm = this.fb.group({
-      csrData: ['', [Validators.required, this.validateCSRFormat]],
-      issuerCertificateId: [null, Validators.required],
-      validityDays: [365, [Validators.required, Validators.min(1), Validators.max(3650)]]
-    });
-  }
-
-  validateCSRFormat(control: AbstractControl): ValidationErrors | null {
-    if (!control.value) return null;
-    const csrPattern = /-----BEGIN CERTIFICATE REQUEST-----[\s\S]*-----END CERTIFICATE REQUEST-----/;
-    return csrPattern.test(control.value) ? null : { invalidCSRFormat: true };
-  }
-
-  onCSRFileSelect(event: any) {
-    const file = event.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.csrForm.get('csrData')?.setValue(e.target.result);
-      };
-      reader.readAsText(file);
-    }
-  }
-
-  onSubmitCSR() {
-    if (this.csrForm.valid) {
-      this.isLoading = true;
-      const request: CSRRequestDTO = {
-        csrData: this.csrForm.get('csrData')?.value.trim(),
-        issuerCertificateId: this.csrForm.get('issuerCertificateId')?.value,
-        validityDays: this.csrForm.get('validityDays')?.value
-      };
-
-      this.certificateService.processCSR(request).subscribe({
-        next: (response) => {
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'CSR processed successfully!'
-          });
-          this.router.navigate(['/app/certificates', response.id]);
-        },
-        error: (error) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.error?.message || 'Failed to process CSR'
-          });
-          this.isLoading = false;
-        }
-      });
-    } else {
-      this.markFormTouched(this.csrForm);
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Invalid Form',
-        detail: 'Please fill in all required fields'
-      });
-    }
-  }
-
-  clearCSRForm() {
-    this.csrForm.reset();
-    this.initializeCSRForm();
-  }
-
-  // ========== Auto-Generate Form ==========
-  
-  initializeAutoGenForm() {
+  initializeForm() {
     const now = new Date();
     const oneYearLater = new Date();
     oneYearLater.setFullYear(now.getFullYear() + 1);
 
     this.autogenForm = this.fb.group({
-      // X.500 Name
+      // Personal Information (X.500 Name)
       commonName: ['', Validators.required],
       emailAddress: ['', Validators.email],
       organizationName: [''],
       organizationalUnit: [''],
       locality: [''],
       state: [''],
-      countryCode: ['', Validators.pattern(/^[A-Z]{2}$/)],
+      countryCode: ['', [Validators.pattern(/^[A-Z]{2}$/)]],
       
       // Certificate Settings
       issuerCertificateId: [null, Validators.required],
@@ -252,16 +152,35 @@ export class CSRProcess implements OnInit {
     const password = control.get('keystorePassword');
     const confirmPassword = control.get('confirmPassword');
     
-    if (!password || !confirmPassword) return null;
+    if (!password || !confirmPassword) {
+      return null;
+    }
     
     return password.value === confirmPassword.value ? null : { passwordMismatch: true };
+  }
+
+  loadCACertificates() {
+    this.certificateService.getAvailableCACertificates().subscribe({
+      next: (certificates) => {
+        this.caCertificates = certificates;
+      },
+      error: (error) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to load CA certificates'
+        });
+      }
+    });
   }
 
   onCASelect(caId: number) {
     const selectedCA = this.caCertificates.find(ca => ca.id === caId);
     if (selectedCA) {
+      // Set max validity to CA's expiration date
       this.maxValidTo = new Date(selectedCA.validTo);
       
+      // Update validTo if it exceeds CA validity
       const currentValidTo = this.autogenForm.get('validTo')?.value;
       if (currentValidTo && currentValidTo > this.maxValidTo) {
         this.autogenForm.patchValue({ validTo: this.maxValidTo });
@@ -270,7 +189,7 @@ export class CSRProcess implements OnInit {
       this.messageService.add({
         severity: 'info',
         summary: 'CA Selected',
-        detail: `Max validity: ${this.maxValidTo.toLocaleDateString()}`
+        detail: `Certificate validity cannot exceed ${this.maxValidTo.toLocaleDateString()}`
       });
     }
   }
@@ -287,7 +206,12 @@ export class CSRProcess implements OnInit {
     }
   }
 
-  onSubmitAutoGen() {
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.autogenForm.get(fieldName);
+    return !!(field && field.invalid && (field.dirty || field.touched));
+  }
+
+  onSubmit() {
     if (this.autogenForm.valid) {
       this.isLoading = true;
       
@@ -321,16 +245,17 @@ export class CSRProcess implements OnInit {
 
       this.certificateService.autoGenerateCertificate(request).subscribe({
         next: (blob) => {
+          // Download the keystore file
           const filename = `certificate-with-key.${formValue.keystoreType.toLowerCase()}`;
           this.certificateService.downloadBlob(blob, filename);
           
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'Certificate generated! Keystore downloaded. Store it securely!',
-            life: 5000
+            detail: 'Certificate generated! Keystore downloaded with private key. Store it securely!'
           });
           
+          // Redirect after 3 seconds
           setTimeout(() => {
             const certId = sessionStorage.getItem('lastGeneratedCertId');
             if (certId) {
@@ -351,51 +276,19 @@ export class CSRProcess implements OnInit {
         }
       });
     } else {
-      this.markFormTouched(this.autogenForm);
+      this.markFormGroupTouched();
       this.messageService.add({
         severity: 'warn',
         summary: 'Invalid Form',
-        detail: 'Please fill in all required fields'
+        detail: 'Please fill in all required fields correctly'
       });
     }
   }
 
-  clearAutoGenForm() {
+  clearForm() {
     this.autogenForm.reset();
-    this.initializeAutoGenForm();
+    this.initializeForm();
     this.maxValidTo = undefined;
-  }
-
-  // ========== Common Methods ==========
-  
-  loadCACertificates() {
-    this.certificateService.getAllCertificates().subscribe({
-      next: (certificates) => {
-        this.caCertificates = certificates;
-      },
-      error: (error) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to load CA certificates'
-        });
-      }
-    });
-  }
-
-  onModeChange() {
-    this.isLoading = false;
-    // Clear forms when switching modes
-    if (this.selectedMode === 'upload') {
-      this.clearCSRForm();
-    } else {
-      this.clearAutoGenForm();
-    }
-  }
-
-  isFieldInvalid(fieldName: string, form: FormGroup): boolean {
-    const field = form.get(fieldName);
-    return !!(field && field.invalid && (field.dirty || field.touched));
   }
 
   goBack() {
@@ -406,9 +299,10 @@ export class CSRProcess implements OnInit {
     return date.toISOString();
   }
 
-  private markFormTouched(form: FormGroup) {
-    Object.keys(form.controls).forEach(key => {
-      form.get(key)?.markAsTouched();
+  private markFormGroupTouched() {
+    Object.keys(this.autogenForm.controls).forEach(key => {
+      const control = this.autogenForm.get(key);
+      control?.markAsTouched();
     });
   }
 }

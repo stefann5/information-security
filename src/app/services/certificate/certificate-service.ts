@@ -1,7 +1,7 @@
 // src/app/services/certificate/certificate.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { 
   CertificateRequestDTO, 
@@ -11,7 +11,8 @@ import {
   RevocationRequestDTO,
   KeystoreDownloadDTO,
   TemplateRequestDTO,
-  TemplateResponseDTO
+  TemplateResponseDTO,
+  AutoGenerateCertificateDTO
 } from '../../dto/certificate/certificate-dtos';
 
 @Injectable({
@@ -90,6 +91,31 @@ export class CertificateService {
       responseType: 'blob'
     });
   }
+
+/**
+ * Auto-generate certificate with system-generated keys
+ * Returns keystore containing both certificate and private key
+ */
+autoGenerateCertificate(request: AutoGenerateCertificateDTO): Observable<Blob> {
+  return this.http.post(`${this.baseUrl}/autogenerate`, request, {
+    responseType: 'blob',
+    observe: 'response'
+  }).pipe(
+    map(response => {
+      // Extract certificate info from headers if needed
+      const certificateId = response.headers.get('X-Certificate-Id');
+      const serialNumber = response.headers.get('X-Certificate-Serial');
+      
+      // Store these for later use if needed
+      if (certificateId && serialNumber) {
+        sessionStorage.setItem('lastGeneratedCertId', certificateId);
+        sessionStorage.setItem('lastGeneratedCertSerial', serialNumber);
+      }
+      
+      return response.body!;
+    })
+  );
+}
 
   /**
    * Get available CA certificates for signing

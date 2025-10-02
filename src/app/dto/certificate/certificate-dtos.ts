@@ -97,3 +97,36 @@ export interface TemplateResponseDTO {
   createdBy: string;
   createdAt: Date;
 }
+
+export interface AutoGenerateCertificateDTO {
+  commonName: string;
+  organizationName?: string;
+  organizationalUnit?: string;
+  countryCode?: string;
+  emailAddress?: string;
+  locality?: string;
+  state?: string;
+  
+  issuerCertificateId: number;
+  validFrom: string;
+  validTo: string;
+  
+  algorithm?: string;
+  keySize?: number;
+  
+  keyUsage?: string[];
+  extendedKeyUsage?: string[];
+  subjectAlternativeNames?: string[];
+  
+  keystoreType?: string;
+  keystorePassword: string;
+  alias?: string;
+}
+
+export interface AutoGenerateResponseDTO {
+  certificateId: number;
+  serialNumber: string;
+  subjectDN: string;
+  keystoreBytes: Blob;
+  message: string;
+}

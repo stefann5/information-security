@@ -1,0 +1,212 @@
+<p-toast position="top-center"></p-toast>
+
+<div class="grid">
+  <div class="col-12">
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="p-4 border-bottom-1 surface-border">
+          <h2 class="m-0">Auto-Generate Certificate</h2>
+          <p class="m-0 text-color-secondary">
+            System will generate keys and create certificate. Private key will be included in downloadable keystore.
+          </p>
+        </div>
+      </ng-template>
+
+      <div class="p-4">
+        <p-message 
+          severity="warn" 
+          text="⚠️ IMPORTANT: The private key will only be available during this download. Store it securely!"
+          styleClass="w-full mb-4">
+        </p-message>
+
+        <form [formGroup]="autogenForm" (ngSubmit)="onSubmit()">
+          <p-tabs value="0">
+            <p-tablist>
+              <p-tab value="0">Personal Information</p-tab>
+              <p-tab value="1">Certificate Settings</p-tab>
+              <p-tab value="2">Key Settings</p-tab>
+              <p-tab value="3">Security</p-tab>
+            </p-tablist>
+
+            <!-- Tab 1: Personal Information -->
+            <p-tabpanel header="Personal Information" leftIcon="pi pi-user" value="0">
+              <div class="p-4">
+                <h4>X.500 Distinguished Name Components</h4>
+                
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="commonName" class="block font-medium mb-2">
+                      Common Name (CN) <span class="text-red-500">*</span>
+                    </label>
+                    <input pInputText id="commonName" formControlName="commonName" 
+                           placeholder="John Doe or example.com" class="w-full" />
+                    <small class="p-error" *ngIf="isFieldInvalid('commonName')">
+                      Common Name is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="emailAddress" class="block font-medium mb-2">Email Address (E)</label>
+                    <input pInputText id="emailAddress" formControlName="emailAddress" 
+                           type="email" placeholder="user@example.com" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationName" class="block font-medium mb-2">Organization (O)</label>
+                    <input pInputText id="organizationName" formControlName="organizationName" 
+                           placeholder="My Company Inc." class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationalUnit" class="block font-medium mb-2">Organizational Unit (OU)</label>
+                    <input pInputText id="organizationalUnit" formControlName="organizationalUnit" 
+                           placeholder="IT Department" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="locality" class="block font-medium mb-2">Locality (L)</label>
+                    <input pInputText id="locality" formControlName="locality" 
+                           placeholder="Belgrade" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="state" class="block font-medium mb-2">State (ST)</label>
+                    <input pInputText id="state" formControlName="state" 
+                           placeholder="Vojvodina" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="countryCode" class="block font-medium mb-2">Country (C)</label>
+                    <input pInputText id="countryCode" formControlName="countryCode" 
+                           placeholder="RS" maxlength="2" class="w-full" style="text-transform: uppercase;" />
+                    <small class="text-color-secondary block mt-1">2-letter ISO code</small>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 2: Certificate Settings -->
+            <p-tabpanel header="Certificate Settings" leftIcon="pi pi-cog" value="1">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12">
+                    <label for="issuerCertificateId" class="block font-medium mb-2">
+                      Issuer CA Certificate <span class="text-red-500">*</span>
+                    </label>
+                    <p-select id="issuerCertificateId" formControlName="issuerCertificateId"
+                              [options]="caCertificates" placeholder="Select issuer CA"
+                              optionLabel="commonName" optionValue="id" styleClass="w-full"
+                              (onChange)="onCASelect($event.value)">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validFrom" class="block font-medium mb-2">Valid From <span class="text-red-500">*</span></label>
+                    <p-datepicker id="validFrom" formControlName="validFrom" [showTime]="true" 
+                                  [showIcon]="true" styleClass="w-full"></p-datepicker>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validTo" class="block font-medium mb-2">Valid To <span class="text-red-500">*</span></label>
+                    <p-datepicker id="validTo" formControlName="validTo" [showTime]="true" 
+                                  [showIcon]="true" [maxDate]="maxValidTo" styleClass="w-full"></p-datepicker>
+                    <small class="text-color-secondary block mt-1" *ngIf="maxValidTo">
+                      Max: {{maxValidTo | date:'short'}}
+                    </small>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="block font-medium mb-2">Subject Alternative Names (SAN)</label>
+                    <p-chips formControlName="subjectAlternativeNames" 
+                             placeholder="Add domain names" styleClass="w-full"></p-chips>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 3: Key Settings -->
+            <p-tabpanel header="Key Settings" leftIcon="pi pi-key" value="2">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="algorithm" class="block font-medium mb-2">Algorithm <span class="text-red-500">*</span></label>
+                    <p-select id="algorithm" formControlName="algorithm" [options]="algorithms" 
+                              styleClass="w-full" (onChange)="onAlgorithmChange()"></p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keySize" class="block font-medium mb-2">Key Size <span class="text-red-500">*</span></label>
+                    <p-select id="keySize" formControlName="keySize" 
+                              [options]="availableKeySizes" styleClass="w-full"></p-select>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="block font-medium mb-2">Key Usage</label>
+                    <p-multiselect formControlName="keyUsage" [options]="keyUsageOptions" 
+                                   placeholder="Select key usages" styleClass="w-full" display="chip"></p-multiselect>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 4: Security -->
+            <p-tabpanel header="Security" leftIcon="pi pi-lock" value="3">
+              <div class="p-4">
+                <p-message severity="warn" 
+                           text="This password protects your private key. Choose a strong password!"
+                           styleClass="w-full mb-4"></p-message>
+
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="keystoreType" class="block font-medium mb-2">Keystore Type <span class="text-red-500">*</span></label>
+                    <p-select id="keystoreType" formControlName="keystoreType" 
+                              [options]="keystoreTypes" styleClass="w-full"></p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="alias" class="block font-medium mb-2">Certificate Alias</label>
+                    <input pInputText id="alias" formControlName="alias" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keystorePassword" class="block font-medium mb-2">
+                      Keystore Password <span class="text-red-500">*</span>
+                    </label>
+                    <p-password id="keystorePassword" formControlName="keystorePassword" 
+                                [toggleMask]="true" [feedback]="true" styleClass="w-full"></p-password>
+                    <small class="p-error" *ngIf="isFieldInvalid('keystorePassword')">
+                      Password is required (min 8 characters)
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="confirmPassword" class="block font-medium mb-2">
+                      Confirm Password <span class="text-red-500">*</span>
+                    </label>
+                    <p-password id="confirmPassword" formControlName="confirmPassword" 
+                                [toggleMask]="true" [feedback]="false" styleClass="w-full"></p-password>
+                    <small class="p-error" *ngIf="autogenForm.errors?.['passwordMismatch'] && autogenForm.get('confirmPassword')?.touched">
+                      Passwords do not match
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+          </p-tabs>
+
+          <div class="flex justify-content-between align-items-center mt-4 pt-4 border-top-1 surface-border">
+            <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" 
+                      [text]="true" (onClick)="goBack()"></p-button>
+            
+            <div class="flex gap-2">
+              <p-button label="Clear" icon="pi pi-times" severity="secondary" 
+                        [text]="true" (onClick)="clearForm()"></p-button>
+              <p-button type="submit" label="Generate Certificate" icon="pi pi-download" 
+                        [loading]="isLoading" [disabled]="autogenForm.invalid || isLoading"></p-button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </p-card>
+  </div>
+</div>
