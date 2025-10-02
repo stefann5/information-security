@@ -1,178 +1,377 @@
 <p-toast position="top-center"></p-toast>
 
-    <div class="grid">
-      <div class="col-12">
-        <p-card>
-          <ng-template pTemplate="header">
-            <div class="p-4 border-bottom-1 surface-border">
-              <h2 class="m-0">Process Certificate Signing Request (CSR)</h2>
-              <p class="m-0 text-color-secondary">
-                Upload and process a Certificate Signing Request to issue a certificate
-              </p>
+<div class="grid">
+  <div class="col-12">
+    <p-card>
+      <ng-template pTemplate="header">
+        <div class="p-4 border-bottom-1 surface-border">
+          <h2 class="m-0">Certificate Request</h2>
+          <p class="m-0 text-color-secondary">
+            Choose how you want to obtain your certificate
+          </p>
+        </div>
+      </ng-template>
+
+      <div class="p-4">
+        <!-- Mode Selection -->
+        <div class="mb-4">
+          <p-selectbutton 
+            [options]="requestModes" 
+            [(ngModel)]="selectedMode"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="onModeChange()">
+            <ng-template let-item>
+              <i [class]="item.icon + ' mr-2'"></i>
+              <span>{{item.label}}</span>
+            </ng-template>
+          </p-selectbutton>
+        </div>
+
+        <!-- Mode Description -->
+        <p-message 
+          [severity]="selectedMode === 'upload' ? 'info' : 'warn'" 
+          styleClass="w-full mb-4">
+          <ng-template pTemplate>
+            <div *ngIf="selectedMode === 'upload'">
+              <strong>Upload CSR Mode:</strong> Upload a Certificate Signing Request generated externally. 
+              Your private key remains secure on your system.
+            </div>
+            <div *ngIf="selectedMode === 'autogen'">
+              <strong>⚠️ Auto-Generate Mode:</strong> System will generate keys for you. 
+              The private key will only be available during download - store it securely!
             </div>
           </ng-template>
+        </p-message>
 
-          <div class="p-4">
-            <p-message 
-              severity="info" 
-              text="CSR (Certificate Signing Request) is a message sent to a Certificate Authority to apply for a digital certificate. Upload your CSR file or paste the CSR content below."
-              styleClass="w-full mb-4">
-            </p-message>
+        <!-- CSR Upload Form -->
+        <form [formGroup]="csrForm" (ngSubmit)="onSubmitCSR()" *ngIf="selectedMode === 'upload'">
+          <p-tabs value="0">
+            <p-tablist>
+              <p-tab value="0">Upload CSR</p-tab>
+              <p-tab value="1">Certificate Settings</p-tab>
+            </p-tablist>
 
-            <form [formGroup]="csrForm" (ngSubmit)="onSubmit()">
-              <p-tabs value="0">
-                <!-- CSR Upload Tab -->
-                 <p-tablist>
-                    <p-tab value="0">Upload CSR</p-tab>
-                    <p-tab value="1">Certificate Settings</p-tab>
-                </p-tablist>
-                <p-tabpanel header="Upload CSR" leftIcon="pi pi-upload" value="0">
-                  <div class="p-4">
-                    <h4>Upload CSR File</h4>
-                    <p-fileUpload
-                      mode="basic"
-                      name="csr"
-                      accept=".csr,.pem,.txt"
-                      [maxFileSize]="1000000"
-                      [auto]="false"
-                      chooseLabel="Choose CSR File"
-                      (onSelect)="onCSRFileSelect($event)"
-                      styleClass="w-full mb-4">
-                    </p-fileUpload>
+            <p-tabpanel header="Upload CSR" leftIcon="pi pi-upload" value="0">
+              <div class="p-4">
+                <h4>Upload CSR File</h4>
+                <p-fileUpload
+                  mode="basic"
+                  name="csr"
+                  accept=".csr,.pem,.txt"
+                  [maxFileSize]="1000000"
+                  [auto]="false"
+                  chooseLabel="Choose CSR File"
+                  (onSelect)="onCSRFileSelect($event)"
+                  styleClass="w-full mb-4">
+                </p-fileUpload>
 
-                    <p-divider align="center" type="solid">
-                      <span class="text-color-secondary text-sm">OR</span>
-                    </p-divider>
+                <p-divider align="center">
+                  <span class="text-color-secondary text-sm">OR</span>
+                </p-divider>
 
-                    <h4>Paste CSR Content</h4>
-                    <label for="csrData" class="block font-medium mb-2">
-                      CSR Data (PEM Format) <span class="text-red-500">*</span>
+                <h4>Paste CSR Content</h4>
+                <textarea
+                  pInputTextarea
+                  id="csrData"
+                  formControlName="csrData"
+                  rows="15"
+                  placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;...&#10;-----END CERTIFICATE REQUEST-----"
+                  class="w-full font-mono text-sm">
+                </textarea>
+                <small class="p-error block" *ngIf="isFieldInvalid('csrData', csrForm)">
+                  CSR data is required
+                </small>
+              </div>
+            </p-tabpanel>
+
+            <p-tabpanel header="Certificate Settings" leftIcon="pi pi-cog" value="1">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="issuerCertificateId" class="block font-medium mb-2">
+                      Issuer CA Certificate <span class="text-red-500">*</span>
                     </label>
-                    <textarea
-                      pInputTextarea
-                      id="csrData"
-                      formControlName="csrData"
-                      rows="15"
-                      cols="60"
-                      placeholder="-----BEGIN CERTIFICATE REQUEST-----
-MIICWjCCAUICAQAwFTETMBEGA1UEAwwKZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3
-...
------END CERTIFICATE REQUEST-----"
-                      styleClass="w-full font-mono text-sm">
-                    </textarea>
-                    <small class="p-error" *ngIf="isFieldInvalid('csrData')">
-                      CSR data is required
+                    <p-select 
+                      id="issuerCertificateId"
+                      formControlName="issuerCertificateId"
+                      [options]="caCertificates"
+                      placeholder="Select issuer CA"
+                      optionLabel="commonName"
+                      optionValue="id"
+                      styleClass="w-full">
+                    </p-select>
+                    <small class="p-error block" *ngIf="isFieldInvalid('issuerCertificateId', csrForm)">
+                      Issuer certificate is required
                     </small>
-                    <small class="text-color-secondary block mt-1">
-                      Paste the complete CSR including BEGIN and END markers
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validityDays" class="block font-medium mb-2">
+                      Validity Period (Days) <span class="text-red-500">*</span>
+                    </label>
+                    <p-inputNumber 
+                      id="validityDays"
+                      formControlName="validityDays"
+                      [min]="1"
+                      [max]="3650"
+                      suffix=" days"
+                      styleClass="w-full">
+                    </p-inputNumber>
+                    <small class="p-error block" *ngIf="isFieldInvalid('validityDays', csrForm)">
+                      Validity period is required
                     </small>
-
-                    <!-- CSR Info Display -->
-                    <div class="mt-4" *ngIf="csrInfo">
-                      <h5>CSR Information</h5>
-                      <div class="surface-100 border-round p-3">
-                        <div class="grid">
-                          <div class="col-12 md:col-6">
-                            <strong>Subject:</strong>
-                            <div class="text-sm">{{csrInfo.subject}}</div>
-                          </div>
-                          <div class="col-12 md:col-6">
-                            <strong>Public Key:</strong>
-                            <div class="text-sm">{{csrInfo.publicKeyAlgorithm}} {{csrInfo.keySize}} bits</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                </p-tabpanel>
-
-                <!-- Certificate Settings Tab -->
-                <p-tabpanel header="Certificate Settings" leftIcon="pi pi-cog" value="1">
-                  <div class="p-4">
-                    <div class="grid">
-                      <div class="col-12 md:col-6">
-                        <label for="issuerCertificateId" class="block font-medium mb-2">
-                          Issuer CA Certificate <span class="text-red-500">*</span>
-                        </label>
-                        <p-select 
-                          id="issuerCertificateId"
-                          formControlName="issuerCertificateId"
-                          [options]="caCertificates"
-                          placeholder="Select issuer CA"
-                          optionLabel="commonName"
-                          optionValue="id"
-                          styleClass="w-full"
-                          >
-                          <ng-template let-ca pTemplate="item">
-                            <div class="flex align-items-center">
-                              <div>
-                                <div class="font-medium">{{ca.commonName}}</div>
-                                <div class="text-sm text-color-secondary">{{ca.subjectDN}}</div>
-                              </div>
-                            </div>
-                          </ng-template>
-                        </p-select>
-                        <small class="p-error" *ngIf="isFieldInvalid('issuerCertificateId')">
-                          Issuer certificate is required
-                        </small>
-                      </div>
-
-                      <div class="col-12 md:col-6">
-                        <label for="validityDays" class="block font-medium mb-2">
-                          Validity Period (Days) <span class="text-red-500">*</span>
-                        </label>
-                        <p-inputNumber 
-                          id="validityDays"
-                          formControlName="validityDays"
-                          [min]="1"
-                          [max]="3650"
-                          suffix=" days"
-                          placeholder="365"
-                          styleClass="w-full">
-                        </p-inputNumber>
-                        <small class="p-error" *ngIf="isFieldInvalid('validityDays')">
-                          Validity period is required
-                        </small>
-                        <small class="text-color-secondary block mt-1">
-                          Maximum validity period may be limited by CA policy
-                        </small>
-                      </div>
-
-                      
-                    </div>
-                  </div>
-                </p-tabpanel>
-              </p-tabs>
-
-              <div class="flex justify-content-between align-items-center mt-4 pt-4 border-top-1 surface-border">
-                <p-button 
-                  label="Back to Certificates" 
-                  icon="pi pi-arrow-left" 
-                  severity="secondary"
-                  [text]="true"
-                  (onClick)="goBack()">
-                </p-button>
-                
-                <div class="flex gap-2">
-                  <p-button 
-                    label="Clear Form" 
-                    icon="pi pi-times" 
-                    severity="secondary"
-                    [text]="true"
-                    (onClick)="clearForm()">
-                  </p-button>
-                  
-                  <p-button 
-                    type="submit"
-                    label="Process CSR" 
-                    icon="pi pi-check" 
-                    [loading]="isLoading"
-                    [disabled]="csrForm.invalid || isLoading">
-                  </p-button>
                 </div>
               </div>
-            </form>
+            </p-tabpanel>
+          </p-tabs>
+
+          <div class="flex justify-content-between mt-4 pt-4 border-top-1 surface-border">
+            <p-button 
+              label="Back" 
+              icon="pi pi-arrow-left" 
+              severity="secondary"
+              [text]="true"
+              (onClick)="goBack()">
+            </p-button>
+            
+            <div class="flex gap-2">
+              <p-button 
+                label="Clear" 
+                icon="pi pi-times" 
+                severity="secondary"
+                [text]="true"
+                (onClick)="clearCSRForm()">
+              </p-button>
+              
+              <p-button 
+                type="submit"
+                label="Process CSR" 
+                icon="pi pi-check" 
+                [loading]="isLoading"
+                [disabled]="csrForm.invalid || isLoading">
+              </p-button>
+            </div>
           </div>
-        </p-card>
+        </form>
+
+        <!-- Auto-Generate Form -->
+        <form [formGroup]="autogenForm" (ngSubmit)="onSubmitAutoGen()" *ngIf="selectedMode === 'autogen'">
+          <p-tabs value="0">
+            <p-tablist>
+              <p-tab value="0">Personal Info</p-tab>
+              <p-tab value="1">Settings</p-tab>
+              <p-tab value="2">Key Config</p-tab>
+              <p-tab value="3">Security</p-tab>
+            </p-tablist>
+
+            <!-- Tab 1: Personal Information -->
+            <p-tabpanel header="Personal Information" value="0">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="commonName" class="block font-medium mb-2">
+                      Common Name (CN) <span class="text-red-500">*</span>
+                    </label>
+                    <input pInputText id="commonName" formControlName="commonName" 
+                           placeholder="John Doe or example.com" class="w-full" />
+                    <small class="p-error block" *ngIf="isFieldInvalid('commonName', autogenForm)">
+                      Common Name is required
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="emailAddress" class="block font-medium mb-2">Email (E)</label>
+                    <input pInputText id="emailAddress" formControlName="emailAddress" 
+                           type="email" placeholder="user@example.com" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationName" class="block font-medium mb-2">Organization (O)</label>
+                    <input pInputText id="organizationName" formControlName="organizationName" 
+                           placeholder="My Company" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="organizationalUnit" class="block font-medium mb-2">Org. Unit (OU)</label>
+                    <input pInputText id="organizationalUnit" formControlName="organizationalUnit" 
+                           placeholder="IT Department" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="locality" class="block font-medium mb-2">City (L)</label>
+                    <input pInputText id="locality" formControlName="locality" 
+                           placeholder="Belgrade" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="state" class="block font-medium mb-2">State (ST)</label>
+                    <input pInputText id="state" formControlName="state" 
+                           placeholder="Vojvodina" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-4">
+                    <label for="countryCode" class="block font-medium mb-2">Country (C)</label>
+                    <input pInputText id="countryCode" formControlName="countryCode" 
+                           placeholder="RS" maxlength="2" class="w-full" style="text-transform: uppercase;" />
+                    <small class="text-color-secondary block mt-1">2-letter code</small>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 2: Certificate Settings -->
+            <p-tabpanel header="Settings" value="1">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12">
+                    <label for="autogen_issuer" class="block font-medium mb-2">
+                      Issuer CA <span class="text-red-500">*</span>
+                    </label>
+                    <p-select 
+                      id="autogen_issuer"
+                      formControlName="issuerCertificateId"
+                      [options]="caCertificates"
+                      placeholder="Select CA"
+                      optionLabel="commonName"
+                      optionValue="id"
+                      styleClass="w-full"
+                      (onChange)="onCASelect($event.value)">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validFrom" class="block font-medium mb-2">Valid From <span class="text-red-500">*</span></label>
+                    <p-datepicker id="validFrom" formControlName="validFrom" 
+                                  [showTime]="true" [showIcon]="true" styleClass="w-full">
+                    </p-datepicker>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="validTo" class="block font-medium mb-2">Valid To <span class="text-red-500">*</span></label>
+                    <p-datepicker id="validTo" formControlName="validTo" 
+                                  [showTime]="true" [showIcon]="true" 
+                                  [maxDate]="maxValidTo" styleClass="w-full">
+                    </p-datepicker>
+                    <small class="text-color-secondary block mt-1" *ngIf="maxValidTo">
+                      Max: {{maxValidTo | date:'short'}}
+                    </small>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="block font-medium mb-2">Alt Names (SAN)</label>
+                    <p-chips formControlName="subjectAlternativeNames" 
+                             placeholder="example.com" styleClass="w-full">
+                    </p-chips>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 3: Key Settings -->
+            <p-tabpanel header="Key Config" value="2">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="algorithm" class="block font-medium mb-2">Algorithm <span class="text-red-500">*</span></label>
+                    <p-select id="algorithm" formControlName="algorithm" 
+                              [options]="algorithms" styleClass="w-full" 
+                              (onChange)="onAlgorithmChange()">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keySize" class="block font-medium mb-2">Key Size <span class="text-red-500">*</span></label>
+                    <p-select id="keySize" formControlName="keySize" 
+                              [options]="availableKeySizes" styleClass="w-full">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="block font-medium mb-2">Key Usage</label>
+                    <p-multiselect formControlName="keyUsage" 
+                                   [options]="keyUsageOptions" 
+                                   styleClass="w-full" display="chip">
+                    </p-multiselect>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- Tab 4: Security -->
+            <p-tabpanel header="Security" value="3">
+              <div class="p-4">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <label for="keystoreType" class="block font-medium mb-2">Keystore Type <span class="text-red-500">*</span></label>
+                    <p-select id="keystoreType" formControlName="keystoreType" 
+                              [options]="keystoreTypes" styleClass="w-full">
+                    </p-select>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="alias" class="block font-medium mb-2">Alias</label>
+                    <input pInputText id="alias" formControlName="alias" class="w-full" />
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="keystorePassword" class="block font-medium mb-2">
+                      Password <span class="text-red-500">*</span>
+                    </label>
+                    <p-password id="keystorePassword" formControlName="keystorePassword" 
+                                [toggleMask]="true" [feedback]="true" styleClass="w-full">
+                    </p-password>
+                    <small class="p-error block" *ngIf="isFieldInvalid('keystorePassword', autogenForm)">
+                      Min 8 characters
+                    </small>
+                  </div>
+
+                  <div class="col-12 md:col-6">
+                    <label for="confirmPassword" class="block font-medium mb-2">
+                      Confirm Password <span class="text-red-500">*</span>
+                    </label>
+                    <p-password id="confirmPassword" formControlName="confirmPassword" 
+                                [toggleMask]="true" [feedback]="false" styleClass="w-full">
+                    </p-password>
+                    <small class="p-error block" *ngIf="autogenForm.errors?.['passwordMismatch'] && autogenForm.get('confirmPassword')?.touched">
+                      Passwords don't match
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+          </p-tabs>
+
+          <div class="flex justify-content-between mt-4 pt-4 border-top-1 surface-border">
+            <p-button 
+              label="Back" 
+              icon="pi pi-arrow-left" 
+              severity="secondary"
+              [text]="true"
+              (onClick)="goBack()">
+            </p-button>
+            
+            <div class="flex gap-2">
+              <p-button 
+                label="Clear" 
+                icon="pi pi-times" 
+                severity="secondary"
+                [text]="true"
+                (onClick)="clearAutoGenForm()">
+              </p-button>
+              
+              <p-button 
+                type="submit"
+                label="Generate" 
+                icon="pi pi-download" 
+                [loading]="isLoading"
+                [disabled]="autogenForm.invalid || isLoading">
+              </p-button>
+            </div>
+          </div>
+        </form>
       </div>
-    </div>
+    </p-card>
+  </div>
+</div>
